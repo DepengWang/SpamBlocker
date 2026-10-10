@@ -73,6 +73,10 @@
         <title>Supported tags</title>: <br>
         - <minor>{reason}</minor> <br>
         &emsp; Why the call was allowed, same as displayed in call history. <br>
+        - <minor>{number}</minor> <br>
+        &emsp; The incoming phone number. <br>
+        - <minor>{contact}</minor> <br>
+        &emsp; Contact or caller display name, when available. <br>
         - <minor>{geolocation}</minor> <br>
         &emsp; The number\'s geolocation. <br>
         - <minor>{carrier}</minor> <br>
@@ -83,6 +87,14 @@
         ]]>
     </string>
     <string name="background_color">Background Color</string>
+    <string name="caller_id_duration">Display time (seconds)</string>
+    <string name="caller_id_show_contact">Show contact</string>
+    <string name="caller_id_font_size">Font size (10–32 sp)</string>
+    <string name="caller_id_show_for_contacts">Show for contact calls</string>
+    <string name="caller_id_duration_help">0: no timer. 1–600: hide after this many seconds. Always hides at call end.</string>
+    <string name="caller_id_keep_after_answer">Keep after answer</string>
+    <string name="caller_id_keep_after_answer_help">Keeps the existing window after answer until the timer expires or the call ends. Default: off.</string>
+    <string name="caller_id_contacts_help">Applies when Contacts permission is granted and the caller is found in your address book.</string>
     <string name="wait">Wait</string>
     <string name="help_action_wait">
         <![CDATA[
@@ -132,4 +144,78 @@
          with regex <no_translate><error>verizon.*</error></no_translate> <br>
         ]]>
     </string>
+    <string name="cn_caller_theme">Window theme</string>
+    <string name="cn_theme_custom">Custom</string>
+    <string name="cn_theme_dark">Dark</string>
+    <string name="cn_theme_light">Light</string>
+    <string name="cn_show_outgoing">Show outgoing calls</string>
+    <string name="cn_outgoing_help">Off by default. Only works when Android provides outgoing call details. End-of-call cleanup still applies.</string>
+    <string name="cn_show_sources">Show sources</string>
+    <string name="cn_risk_conflict">Conflicting sources — verify before trusting</string>
+    <string name="cn_risk_high">Reported high risk — advisory only</string>
+    <string name="cn_risk_medium">Reported risk — use caution</string>
+    <string name="cn_source_prefix">Source: %1$s</string>
+    <string name="cn_identity">Number identity</string>
+    <string name="cn_configure">Configure</string>
+    <string name="cn_save">Save</string>
+    <string name="cn_saved">Saved</string>
+    <string name="cn_invalid_config">Invalid JSON or options. Use up to 6 unique source IDs, HTTPS URLs, GET/POST and 250–5000 ms timeout.</string>
+    <string name="cn_sources_json">Sources (JSON)</string>
+    <string name="cn_example">Insert example</string>
+    <string name="cn_identity_help">Online sources are off by default. Enabled sources receive unfamiliar phone numbers, not address-book contacts. Lookup only displays identity and never blocks calls. CallerInfo legacy custom APIs are supported with tel/key parameters, result.* fields, and error_code=0. Templates accept {number} (E.164), {domestic}, and shared_pref(baidu_api_key/juhe_api_key/tmini_api_key) values. Sources merge in JSON order. Tmini is charged per successful call; the phone number and key are sent over HTTPS, but storing the key on a client device risks extraction. A user-owned server proxy is safer. Tencent, 360, and Dianhua still require verified docs and authorization.</string>
+    <string name="cn_cache_policy">Cache policy (JSON)</string>
+    <string name="cn_cache_policy_help">This policy applies to general identity cache. Successful Tmini results, including unmarked numbers, are kept permanently in marked.db without automatic expiry or eviction to reduce paid requests. Use Clear cache to remove them manually. API errors are never cached as unmarked.</string>
+    <string name="cn_query_timeout">Total timeout (ms)</string>
+    <string name="cn_test_help">Save first. Test sends the entered number to saved, enabled sources. Results may be cached. No mark does not mean safe.</string>
+    <string name="cn_test_number">Test number</string>
+    <string name="cn_query_test">Test query</string>
+    <string name="cn_invalid_number">Invalid number</string>
+    <string name="cn_query_failed">Query failed</string>
+    <string name="cn_clear_cache">Clear cache</string>
+    <string name="cn_cache_cleared">Cache cleared</string>
+    <string name="cn_manual_lookup">Look up number</string>
+    <string name="cn_lookup_help">Spaces and hyphens are accepted. The local prefix database is checked first, followed by enabled sources. Lookup never blocks a call by itself.</string>
+    <string name="cn_manual_number">Phone number</string>
+    <string name="cn_query">Search</string>
+    <string name="cn_lookup_loading">Searching…</string>
+    <string name="cn_no_identity">No caller information found</string>
+    <string name="cn_save_lookup">Save lookup</string>
+    <string name="cn_lookup_saved">Saved to lookup history</string>
+    <string name="cn_recent_lookups">Recent lookups</string>
+    <string name="cn_custom_mark">Custom label</string>
+    <string name="cn_mark_name">Label</string>
+    <string name="cn_save_mark">Save label</string>
+    <string name="cn_mark_saved">Label saved</string>
+    <string name="cn_allow_number">Allow number</string>
+    <string name="cn_block_number">Block number</string>
+    <string name="cn_manual_allow_rule">Manual lookup: allowed number</string>
+    <string name="cn_manual_block_rule">Manual lookup: blocked number</string>
+    <string name="cn_rule_exists">A rule for this number already exists. Check Number Rules.</string>
+    <string name="cn_rule_allow_added">Allow rule added</string>
+    <string name="cn_rule_block_added">Block rule added</string>
+    <string name="cn_identity_section">Caller ID and history display</string>
+    <string name="cn_identity_short">Location, carrier, and online lookup</string>
+    <string name="cn_history_location">Show location in call history</string>
+    <string name="cn_history_carrier">Show carrier in call history</string>
+    <string name="cn_preset_400">Block 400/800 service numbers</string>
+    <string name="cn_preset_400_help">Only applies after you add it. It may block legitimate company support or callback numbers; enable only if this suits your needs.</string>
+    <string name="cn_preset_95">Block 95/96 short codes</string>
+    <string name="cn_preset_95_help">Only applies after you add it. 95/96 numbers may belong to banks, government, or business services; use caution.</string>
+    <string name="cn_only_offline">Use local offline database only</string>
+    <string name="cn_ignored_prefixes">Skip online lookup for number prefixes</string>
+    <string name="cn_baidu_key">Baidu API key</string>
+    <string name="cn_juhe_key">Juhe API key</string>
+    <string name="cn_tmini_key">Tmini API key</string>
+    <string name="cn_tmini_mark_api">Load Tmini paid aggregate marking API</string>
+    <string name="cn_tmini_default_enabled">New Tmini API loaded and enabled. Successful lookups consume credits per Tmini policy.</string>
+    <string name="cn_tmini_default_needs_key">New Tmini API loaded but disabled. Enter your key, then load it again.</string>
+    <string name="cn_legacy_api_example">CallerInfo API example</string>
+    <string name="cn_juhe_default_api">Load Juhe default API</string>
+    <string name="cn_juhe_default_enabled">Loaded and enabled. Queries send numbers to Juhe Data; verify with the test query.</string>
+    <string name="cn_juhe_default_needs_key">Endpoint and parameters loaded but not enabled. Enter a Juhe API key, then tap this button again.</string>
+    <string name="cn_overlay_width">Overlay width (dp, 0 = screen width)</string>
+    <string name="cn_overlay_height">Overlay height (dp, 0 = auto)</string>
+    <string name="cn_overlay_size_help">Default width is the screen width. Set 220–1000 dp; height supports 120–500 dp. Zero height wraps content but never exceeds 500 dp; excess content scrolls.</string>
+    <string name="cn_api_type">Preferred source ID (-1 uses list order)</string>
+    <string name="cn_legacy_credentials_help">API keys are kept in local preferences and excluded from app configuration backups. The Tmini key is still exposed to client-device extraction risk. Do not put keys directly in exported source JSON.</string>
 </resources>

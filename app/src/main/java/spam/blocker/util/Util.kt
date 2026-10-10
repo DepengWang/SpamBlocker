@@ -38,9 +38,6 @@ import androidx.core.content.edit
 import androidx.core.database.getLongOrNull
 import androidx.core.database.getStringOrNull
 import androidx.core.graphics.scale
-import com.google.i18n.phonenumbers.PhoneNumberToCarrierMapper
-import com.google.i18n.phonenumbers.PhoneNumberUtil
-import com.google.i18n.phonenumbers.geocoding.PhoneNumberOfflineGeocoder
 import kotlinx.serialization.json.Json
 import org.json.JSONArray
 import org.json.JSONObject
@@ -564,41 +561,15 @@ object Util {
         }
     }
 
-    // Get the geolocation from the number using libphonenumber's geo database
+    // Get the geolocation from the offline CN-aware lookup module.
     fun numberGeoLocation(ctx: Context, rawNumber: String) : String? {
-        return try {
-            val phoneUtil = PhoneNumberUtil.getInstance()
-            val geocoder = PhoneNumberOfflineGeocoder.getInstance()
-
-            val ccAlpha2 = CountryCode.alpha2(ctx) // "US"
-            val phoneNumber = phoneUtil.parse(rawNumber, ccAlpha2)
-
-            if (!phoneUtil.isValidNumber(phoneNumber)) {
-                return null
-            }
-            val location = geocoder.getDescriptionForNumber(phoneNumber, Locale.getDefault())
-            location
-        } catch (_: Exception) {
-            null
-        }
+        val defaultRegion = CountryCode.alpha2(ctx)
+        return CnNumberLookup.lookupOffline(ctx, rawNumber, defaultRegion).location
     }
-    // Get the carrier name from the number using libphonenumber's carrier database
+    // Get the carrier name from the offline CN-aware lookup module.
     fun numberCarrier(ctx: Context, rawNumber: String) : String? {
-        return try {
-            val phoneUtil = PhoneNumberUtil.getInstance()
-            val carrierMapper = PhoneNumberToCarrierMapper.getInstance()
-
-            val ccAlpha2 = CountryCode.alpha2(ctx) // "US"
-            val phoneNumber = phoneUtil.parse(rawNumber, ccAlpha2)
-
-            if (!phoneUtil.isValidNumber(phoneNumber)) {
-                return null
-            }
-            val carrier = carrierMapper.getNameForNumber(phoneNumber, Locale.getDefault())
-            carrier
-        } catch (_: Exception) {
-            null
-        }
+        val defaultRegion = CountryCode.alpha2(ctx)
+        return CnNumberLookup.lookupOffline(ctx, rawNumber, defaultRegion).carrier
     }
 
     fun isEmergencyNumber(ctx: Context, rawNumber: String) : Boolean {

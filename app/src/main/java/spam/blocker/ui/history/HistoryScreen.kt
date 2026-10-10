@@ -15,11 +15,16 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import spam.blocker.ui.M
+import spam.blocker.R
+import spam.blocker.def.Def
 import spam.blocker.ui.widgets.FabWrapper
 import spam.blocker.ui.widgets.SearchBox
+import spam.blocker.ui.widgets.StrokeButton
+import spam.blocker.ui.widgets.Str
 import spam.blocker.util.LockedDebouncer
 import spam.blocker.util.TimeUtils.FreshnessColor
 import spam.blocker.util.spf
+import spam.blocker.G
 
 object HistoryOptions {
     val showHistoryIndicator : MutableState<Boolean> = mutableStateOf(false)
@@ -78,11 +83,18 @@ fun HistoryScreen(
         }
     ) {
         Column(modifier = M.padding(8.dp, 8.dp, 8.dp, 2.dp)) {
+            val lookupTrigger = remember { mutableStateOf(false) }
+            NumberLookupDialog(lookupTrigger)
             // Use a Debouncer here as there could be LOTS of history records.
             val debouncer = remember { LockedDebouncer() }
             SearchBox(vm.searchEnabled, vm.filter) {
                 debouncer.debounce {
                     vm.reload(ctx)
+                }
+            }
+            if (vm.forType == Def.ForNumber) {
+                StrokeButton(Str(R.string.cn_manual_lookup), color = G.palette.textGrey) {
+                    lookupTrigger.value = true
                 }
             }
             HistoryList(

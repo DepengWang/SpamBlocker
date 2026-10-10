@@ -617,6 +617,16 @@ class CallerID : IConfig {
     var y = 0
     var bgColor: Int = 0
     var template = ""
+    var showContact = true
+    var durationSec = 0
+    var fontSizeSp = 14
+    var showForContacts = true
+    var keepAfterAnswer = false
+    var showOutgoing = false
+    var showSources = true
+    var theme = 0
+    var windowWidthDp = 0
+    var windowHeightDp = 0
     override fun load(ctx: Context) {
         val spf = spf.CallerID(ctx)
         enabled = spf.isEnabled
@@ -624,6 +634,16 @@ class CallerID : IConfig {
         y = spf.y
         bgColor = spf.bgColor
         template = spf.template
+        showContact = spf.showContact
+        durationSec = spf.durationSec
+        fontSizeSp = spf.fontSizeSp
+        showForContacts = spf.showForContacts
+        keepAfterAnswer = spf.keepAfterAnswer
+        showOutgoing = spf.showOutgoing
+        showSources = spf.showSources
+        theme = spf.theme
+        windowWidthDp = spf.windowWidthDp
+        windowHeightDp = spf.windowHeightDp
     }
 
     override fun apply(ctx: Context) {
@@ -633,6 +653,16 @@ class CallerID : IConfig {
         spf.y = y
         spf.bgColor = bgColor
         spf.template = template
+        spf.showContact = showContact
+        spf.durationSec = durationSec.coerceIn(0, 600)
+        spf.fontSizeSp = fontSizeSp.coerceIn(10, 32)
+        spf.showForContacts = showForContacts
+        spf.keepAfterAnswer = keepAfterAnswer
+        spf.showOutgoing = showOutgoing
+        spf.showSources = showSources
+        spf.theme = theme.coerceIn(0, 2)
+        spf.windowWidthDp = if (windowWidthDp == 0) 0 else windowWidthDp.coerceIn(220, 1000)
+        spf.windowHeightDp = if (windowHeightDp == 0) 0 else windowHeightDp.coerceIn(120, 1600)
     }
 }
 
@@ -781,6 +811,12 @@ class QuickCopyRules : PatternRules() {
 
 @Serializable
 class ApiQuery : IConfig {
+    var identitySources = "[]"
+    var identityCachePolicy = "{}"
+    var identityTimeoutMs = 3000
+    var onlyOffline = false
+    var ignoredNumberPrefixes = ""
+    var apiType = -1
     val apis = mutableListOf<QueryApi>()
     var listCollapsed = false
     var priority = -1
@@ -789,6 +825,12 @@ class ApiQuery : IConfig {
         apis.clear()
         apis.addAll(G.apiQueryVM.table.listAll(ctx).map { it as QueryApi })
         val spf = spf.ApiQueryOptions(ctx)
+        identitySources = spf.identitySources
+        identityCachePolicy = spf.identityCachePolicy
+        identityTimeoutMs = spf.identityTimeoutMs
+        onlyOffline = spf.onlyOffline
+        ignoredNumberPrefixes = spf.ignoredNumberPrefixes
+        apiType = spf.apiType
         listCollapsed = spf.isListCollapsed
         priority = spf.priority
     }
@@ -802,6 +844,12 @@ class ApiQuery : IConfig {
         val spf = spf.ApiQueryOptions(ctx)
         spf.isListCollapsed = listCollapsed
         spf.priority = priority
+        spf.identitySources = identitySources
+        spf.identityCachePolicy = identityCachePolicy
+        spf.identityTimeoutMs = identityTimeoutMs.coerceIn(250, 5000)
+        spf.onlyOffline = onlyOffline
+        spf.ignoredNumberPrefixes = ignoredNumberPrefixes
+        spf.apiType = apiType
     }
 }
 @Serializable

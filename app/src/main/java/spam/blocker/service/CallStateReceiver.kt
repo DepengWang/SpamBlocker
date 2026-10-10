@@ -64,8 +64,9 @@ class CallStateReceiver : BroadcastReceiver() {
                 TelephonyManager.EXTRA_STATE_OFFHOOK -> {
                     logi("IN CALL")
 
-                    // 1. Dismiss the Caller ID window
-                    if (spf.CallerID(ctx).isEnabled) {
+                    // 1. Keep the existing window after answer only when requested.
+                    val callerId = spf.CallerID(ctx)
+                    if (!callerId.isEnabled || !callerId.keepAfterAnswer) {
                         FloatingWindow.hide(ctx)
                     }
 
@@ -88,9 +89,7 @@ class CallStateReceiver : BroadcastReceiver() {
                     logi("IDLE")
 
                     // 1. Dismiss the Caller ID window
-                    if (spf.CallerID(ctx).isEnabled) {
-                        FloatingWindow.hide(ctx)
-                    }
+                    FloatingWindow.hide(ctx)
 
                     // 2. When the call ends before the hang-up delay, kill the hang-up task,
                     //  to prevent killing any following calls by mistake.

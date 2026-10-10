@@ -28,6 +28,34 @@ class RegexPreset(
 val RegexPresets = mapOf(
     Def.ForNumber to listOf(
         RegexPreset(
+            label = { it.getString(R.string.cn_preset_400) },
+            tooltip = { it.getString(R.string.cn_preset_400_help) },
+        ) { ctx ->
+            listOf(RegexRule(
+                pattern = "^(?:\\+?86)?(?:400|800)\\d{7}$",
+                patternFlags = Def.FLAG_REGEX_RAW_NUMBER,
+                description = ctx.getString(R.string.cn_preset_400),
+                priority = 20,
+                isBlacklist = true,
+                flags = Def.FLAG_FOR_CALL,
+                channel = Def.DEF_SPAM_CHANNEL,
+            ))
+        },
+        RegexPreset(
+            label = { it.getString(R.string.cn_preset_95) },
+            tooltip = { it.getString(R.string.cn_preset_95_help) },
+        ) { ctx ->
+            listOf(RegexRule(
+                pattern = "^(?:\\+?86)?9[56]\\d{1,4}$",
+                patternFlags = Def.FLAG_REGEX_RAW_NUMBER,
+                description = ctx.getString(R.string.cn_preset_95),
+                priority = 20,
+                isBlacklist = true,
+                flags = Def.FLAG_FOR_CALL,
+                channel = Def.DEF_SPAM_CHANNEL,
+            ))
+        },
+        RegexPreset(
             label = { it.getString(R.string.private_number) },
             tooltip = {
                 it.getString(R.string.help_private_number)

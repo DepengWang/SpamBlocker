@@ -140,6 +140,15 @@ class Db private constructor(
         }
     }
 
+    override fun onOpen(db: SQLiteDatabase) {
+        super.onOpen(db)
+        // Idempotent extension migration for both existing and newly created databases.
+        db.execSQL("CREATE TABLE IF NOT EXISTS cn_identity_cache (number TEXT NOT NULL, source_key TEXT NOT NULL, payload TEXT NOT NULL, expires_at INTEGER NOT NULL, PRIMARY KEY(number, source_key))")
+        db.execSQL("CREATE TABLE IF NOT EXISTS cn_number_lookup_history (id INTEGER PRIMARY KEY AUTOINCREMENT, number TEXT NOT NULL, looked_up_at INTEGER NOT NULL, evidence TEXT NOT NULL)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS cn_number_lookup_history_time ON cn_number_lookup_history(looked_up_at DESC)")
+        db.execSQL("CREATE TABLE IF NOT EXISTS cn_number_marks (number TEXT PRIMARY KEY NOT NULL, label TEXT NOT NULL, updated_at INTEGER NOT NULL)")
+    }
+
     override fun onCreate(db: SQLiteDatabase) {
         // number rules / content rules / quick copy
         fun createRegexRuleTable(tableName: String) {

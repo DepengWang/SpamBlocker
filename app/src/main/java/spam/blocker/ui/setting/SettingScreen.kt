@@ -39,6 +39,7 @@ import spam.blocker.ui.setting.api.ApiList
 import spam.blocker.ui.setting.api.ApiQueryPresets
 import spam.blocker.ui.setting.api.ApiReportPresets
 import spam.blocker.ui.setting.api.ApiSummary
+import spam.blocker.ui.setting.api.IdentitySettings
 import spam.blocker.ui.setting.bot.BotHeader
 import spam.blocker.ui.setting.bot.BotList
 import spam.blocker.ui.setting.bot.BotSummary
@@ -54,6 +55,7 @@ import spam.blocker.ui.setting.quick.BlockType
 import spam.blocker.ui.setting.quick.BlockTypeSummary
 import spam.blocker.ui.setting.quick.CallerID
 import spam.blocker.ui.setting.quick.CallerIDSummary
+import spam.blocker.ui.setting.HistoryDisplayOptions
 import spam.blocker.ui.setting.quick.Contacts
 import spam.blocker.ui.setting.quick.ContactsSummary
 import spam.blocker.ui.setting.quick.Dialed
@@ -229,7 +231,6 @@ fun SettingScreen() {
 
                             BlockType()
                             Notification()
-                            CallerID()
                         }
                     },
                     contentCollapsed = {
@@ -250,7 +251,25 @@ fun SettingScreen() {
 
                             BlockTypeSummary()
                             NotificationSummary()
+                        }
+                    }
+                )
+
+                Section(
+                    title = Str(R.string.cn_identity_section),
+                    horizontalPadding = 8,
+                    isCollapsed = remember { mutableStateOf(false) },
+                    content = {
+                        Column {
+                            CallerID()
+                            HistoryDisplayOptions()
+                            IdentitySettings()
+                        }
+                    },
+                    contentCollapsed = {
+                        FlowRowSpaced(4) {
                             CallerIDSummary()
+                            Text(Str(R.string.cn_identity_short), color = G.palette.textGrey)
                         }
                     }
                 )

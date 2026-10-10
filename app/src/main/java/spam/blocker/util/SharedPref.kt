@@ -258,6 +258,16 @@ class spf { // for namespace only
         }
     }
     class ApiQueryOptions(ctx: Context) : SharedPref(ctx) {
+        var identitySources by str("cn_identity_sources", "[]")
+        var identityCachePolicy by str("cn_identity_cache_policy", "{}")
+        var identityTimeoutMs by int("cn_identity_timeout_ms", 3000)
+        // CallerInfo/PhoneNumber legacy-compatible controls and API credentials.
+        var onlyOffline by bool("only_offline_key", false)
+        var ignoredNumberPrefixes by str("cn_identity_ignored_prefixes", "")
+        var apiType by int("api_type", -1)
+        var baiduApiKey by str("baidu_api_key")
+        var juheApiKey by str("juhe_api_key")
+        var tminiApiKey by str("tmini_api_key")
         var isListCollapsed by bool("api_query_list_collapsed")
         var priority by int("api_query_priority", -1)
     }
@@ -379,6 +389,16 @@ class spf { // for namespace only
         var y by int("caller_id_window_y")
         var bgColor by int("caller_id_bg_color", DefaultCallerIdBgColor)
         var template by str("caller_id_template", DefaultCallerIdTemplate)
+        var showContact by bool("caller_id_show_contact", true)
+        var durationSec by int("caller_id_duration_sec")
+        var fontSizeSp by int("caller_id_font_size_sp", 14)
+        var showForContacts by bool("caller_id_show_for_contacts", true)
+        var keepAfterAnswer by bool("caller_id_keep_after_answer", false)
+        var showOutgoing by bool("caller_id_show_outgoing", false)
+        var showSources by bool("caller_id_show_sources", true)
+        var theme by int("caller_id_theme", 0) // 0 custom, 1 dark, 2 light
+        var windowWidthDp by int("caller_id_window_width_dp", 0)
+        var windowHeightDp by int("caller_id_window_height_dp", 0)
     }
 
     @Serializable

@@ -4,6 +4,7 @@
 .vscode/
 .kotlin/
 *.db
+!app/src/main/res/raw/marked_2016.db
 build/
 app/release/
 app/debug/

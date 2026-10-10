@@ -6,11 +6,15 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
+import android.widget.ScrollView
+import android.view.ViewGroup
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import spam.blocker.ui.slightDiff
@@ -23,16 +27,34 @@ private const val PaddingDp: Int = 20
 private const val CornerRadiusDp: Float = 5f
 private const val MinWidthDp: Int = 220
 private const val MinHeightDp: Int = 120
+private const val MaxHeightDp: Int = 500
+
+private class CappedScrollView(ctx: Context, private val maxHeightPx: Int) : ScrollView(ctx) {
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val requestedHeight = MeasureSpec.getSize(heightMeasureSpec)
+        val boundedHeight = minOf(requestedHeight.takeIf { it > 0 } ?: maxHeightPx, maxHeightPx)
+        val boundedHeightSpec = MeasureSpec.makeMeasureSpec(
+            boundedHeight,
+            if (MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.EXACTLY) MeasureSpec.EXACTLY else MeasureSpec.AT_MOST,
+        )
+        super.onMeasure(widthMeasureSpec, boundedHeightSpec)
+    }
+}
 
 
 // For Caller ID use only
 object FloatingWindow {
     // configurations, updated via `update()`
     private var backgroundColor: Int = 0
+    private var configuredWidthDp: Int = 0
+    private var configuredHeightDp: Int = 0
 
     // private attributes
     var onDrag: ((Int, Int) -> Unit)? = null
     private var floatingViewRef: WeakReference<FrameLayout>? = null
+    private var contentViewRef: WeakReference<View>? = null
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var hideRunnable: Runnable? = null
 
     private var isHiding = false
     private var centerX: Int? = null
@@ -44,6 +66,8 @@ object FloatingWindow {
         bgColor: Int? = null,
         x: Int? = null,
         y: Int? = null,
+        widthDp: Int? = null,
+        heightDp: Int? = null,
     ) {
         // 1. Save attributes if provided
         if (bgColor != null) {
@@ -55,13 +79,15 @@ object FloatingWindow {
         if (y != null) {
             this.centerY = y
         }
+        if (widthDp != null) configuredWidthDp = widthDp.takeIf { it == 0 } ?: widthDp.coerceIn(MinWidthDp, 1000)
+        if (heightDp != null) configuredHeightDp = heightDp.takeIf { it == 0 } ?: heightDp.coerceIn(MinHeightDp, MaxHeightDp)
 
         // 2. Apply changes
         val overlay = floatingView() ?: return
         val layoutParams = overlay.layoutParams as? WindowManager.LayoutParams ?: return
 
-        layoutParams.width = WindowManager.LayoutParams.WRAP_CONTENT
-        layoutParams.height = WindowManager.LayoutParams.WRAP_CONTENT
+        applyWindowSize(ctx, layoutParams)
+        contentViewRef?.get()?.let { installContent(ctx, overlay, it) }
 
         applyConfigToOverlay(ctx, overlay)
         windowManager(ctx).updateViewLayout(overlay, layoutParams)
@@ -71,23 +97,28 @@ object FloatingWindow {
     fun show(
         ctx: Context,
         view: View,
+        durationMs: Long? = null,
+        widthDp: Int? = null,
+        heightDp: Int? = null,
     ) {
+        if (widthDp != null) configuredWidthDp = widthDp.takeIf { it == 0 } ?: widthDp.coerceIn(MinWidthDp, 1000)
+        if (heightDp != null) configuredHeightDp = heightDp.takeIf { it == 0 } ?: heightDp.coerceIn(MinHeightDp, MaxHeightDp)
         // Do NOT call `hide()` here, it can cause crash https://github.com/aj3423/SpamBlocker/issues/619
         // Reuse the existing window container instead of removing and re-adding it.
         val existing = floatingView()
         if (existing != null) {
-            existing.removeAllViews()
-            existing.addView(
-                view,
-                FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.WRAP_CONTENT,
-                    FrameLayout.LayoutParams.WRAP_CONTENT,
-                    Gravity.CENTER
-                )
-            )
+            contentViewRef = WeakReference(view)
+            installContent(ctx, existing, view)
+            (existing.layoutParams as? WindowManager.LayoutParams)?.let { params ->
+                applyWindowSize(ctx, params)
+                windowManager(ctx).updateViewLayout(existing, params)
+            }
             existing.visibility = View.VISIBLE
+            existing.isEnabled = true
+            existing.isClickable = true
             animateShow(existing)
             isHiding = false
+            scheduleHide(ctx, durationMs)
             return
         }
 
@@ -95,15 +126,9 @@ object FloatingWindow {
             clipToOutline = true
             visibility = View.INVISIBLE
             applyConfigToOverlay(ctx, this)
-            addView(
-                view,
-                FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.WRAP_CONTENT,
-                    FrameLayout.LayoutParams.WRAP_CONTENT,
-                    Gravity.CENTER
-                )
-            )
         }
+        contentViewRef = WeakReference(view)
+        installContent(ctx, overlayContainer, view)
 
         val layoutParams = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -118,6 +143,7 @@ object FloatingWindow {
             gravity = Gravity.TOP or Gravity.START
             x = 0
             y = 0
+            applyWindowSize(ctx, this)
         }
 
         attachDragBehavior(ctx, overlayContainer, layoutParams)
@@ -141,13 +167,27 @@ object FloatingWindow {
         windowManager(ctx).addView(overlayContainer, layoutParams)
         floatingViewRef = WeakReference(overlayContainer)
         isHiding = false
+        scheduleHide(ctx, durationMs)
     }
 
     fun hide(ctx: Context) {
+        spam.blocker.util.CallerIdentitySession.invalidate()
         hide(ctx, animated = true)
     }
 
+    // Updating online content must not animate, reopen a hidden window, or reset its timer.
+    fun replaceContent(ctx: Context, view: View): Boolean {
+        val overlay = floatingView() ?: return false
+        if (isHiding || overlay.visibility != View.VISIBLE) return false
+        contentViewRef = WeakReference(view)
+        installContent(ctx, overlay, view)
+        val params = overlay.layoutParams as WindowManager.LayoutParams
+        overlay.post { reconcileOverlayLayout(ctx, overlay, params) }
+        return true
+    }
+
     private fun hide(ctx: Context, animated: Boolean) {
+        cancelScheduledHide()
         floatingView()?.let { overlay ->
             if (isHiding && animated) {
                 return
@@ -249,6 +289,33 @@ object FloatingWindow {
         overlay.minimumHeight = minHeight(ctx)
         val padding = dpToPx(ctx, PaddingDp)
         overlay.setPadding(padding, padding, padding, padding)
+    }
+
+    private fun installContent(ctx: Context, overlay: FrameLayout, view: View) {
+        (view.parent as? ViewGroup)?.removeView(view)
+        overlay.removeAllViews()
+        val child: View = CappedScrollView(ctx, dpToPx(ctx, MaxHeightDp - PaddingDp * 2)).apply {
+            isFillViewport = configuredHeightDp > 0
+            overScrollMode = View.OVER_SCROLL_NEVER
+            addView(view, ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ))
+        }
+        overlay.addView(child, FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            if (configuredHeightDp > 0) FrameLayout.LayoutParams.MATCH_PARENT else FrameLayout.LayoutParams.WRAP_CONTENT,
+            Gravity.CENTER,
+        ))
+    }
+
+    private fun applyWindowSize(ctx: Context, params: WindowManager.LayoutParams) {
+        val horizontalInset = dpToPx(ctx, PaddingDp * 2)
+        val verticalInset = dpToPx(ctx, PaddingDp * 2)
+        params.width = if (configuredWidthDp == 0) ctx.resources.displayMetrics.widthPixels
+            else dpToPx(ctx, configuredWidthDp).coerceAtMost(ctx.resources.displayMetrics.widthPixels - horizontalInset).coerceAtLeast(minWidth(ctx))
+        params.height = if (configuredHeightDp == 0) WindowManager.LayoutParams.WRAP_CONTENT
+            else dpToPx(ctx, configuredHeightDp.coerceAtMost(MaxHeightDp)).coerceAtLeast(minHeight(ctx))
     }
 
     private fun createOverlayBackground(ctx: Context): GradientDrawable {
@@ -390,8 +457,25 @@ object FloatingWindow {
         } finally {
             floatingViewRef?.clear()
             floatingViewRef = null
+            contentViewRef?.clear()
+            contentViewRef = null
             isHiding = false
         }
+    }
+
+    private fun scheduleHide(ctx: Context, durationMs: Long?) {
+        cancelScheduledHide()
+        if (durationMs == null || durationMs <= 0) return
+
+        val appContext = ctx.applicationContext
+        val runnable = Runnable { hide(appContext) }
+        hideRunnable = runnable
+        mainHandler.postDelayed(runnable, durationMs)
+    }
+
+    private fun cancelScheduledHide() {
+        hideRunnable?.let(mainHandler::removeCallbacks)
+        hideRunnable = null
     }
 
     private fun saveCenterPosition(centerX: Int, centerY: Int, notify: Boolean = true) {

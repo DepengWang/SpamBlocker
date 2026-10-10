@@ -9,9 +9,7 @@ import android.telecom.TelecomManager
 import android.telephony.TelephonyManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.IO
-import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import spam.blocker.Events
 import spam.blocker.db.BotTable
 import spam.blocker.db.CallTable
@@ -25,8 +23,8 @@ import spam.blocker.service.checker.Checker
 import spam.blocker.service.checker.ICheckResult
 import spam.blocker.service.reporting.maybeAutoReportCall
 import spam.blocker.ui.NotificationTrampolineActivity
-import spam.blocker.ui.setting.quick.showCallerIdWindow
 import spam.blocker.util.Contacts
+import spam.blocker.util.CallerIdentitySession
 import spam.blocker.util.ILogger
 import spam.blocker.util.Notification
 import spam.blocker.util.Notification.ShowType
@@ -34,8 +32,6 @@ import spam.blocker.util.RingtoneUtil
 import spam.blocker.util.SaveableLogger
 import spam.blocker.util.SimUtils
 import spam.blocker.util.Util
-import spam.blocker.util.Util.numberCarrier
-import spam.blocker.util.Util.numberGeoLocation
 import spam.blocker.util.logi
 import spam.blocker.util.spf
 
@@ -126,22 +122,27 @@ class CallScreeningService : CallScreeningService() {
     }
 
     override fun onScreenCall(details: Details) {
+        val identityToken = CallerIdentitySession.begin()
         logi("onScreenCall() invoked by Android")
 
         // With this coroutine, this function returns immediately without blocking the whole process.
         // So in doze mode, other services will be woken up and get executed simultaneously.
         // Feature "Push Alert" relies on this, see "NotificationListenerService.kt" for details.
         CoroutineScope(IO).launch {
-            doScreenCall(details)
+            doScreenCall(details, identityToken)
         }
     }
 
-    private fun doScreenCall(details: Details) {
+    private suspend fun doScreenCall(details: Details, identityToken: Long) {
         logi("doScreenCall()")
 
         // Outgoing
         if (details.callDirection == Details.DIRECTION_OUTGOING) {
             updateOutgoingEmergencyTimestamp(this, details.getRawNumber())
+            val prefs = spf.CallerID(this)
+            if (prefs.isEnabled && prefs.showOutgoing && spf.Global(this).isGloballyEnabled) {
+                CallerIdentityPresenter.launch(this, details.getRawNumber(), details.callerDisplayName, null, identityToken)
+            }
         }
 
         // Incoming
@@ -161,7 +162,8 @@ class CallScreeningService : CallScreeningService() {
         val r = processCall(
             ctx = ctx, logger = SaveableLogger(), rawNumber = rawNumber,
             cnap = cnap, callDetails = details, simSlot = ringingSimSlot, isTest = false,
-            showCallerId = spf.CallerID(ctx).isEnabled
+            showCallerId = spf.CallerID(ctx).isEnabled,
+            identityToken = identityToken
         )
         logi("processCall() result: $r")
 
@@ -276,8 +278,10 @@ class CallScreeningService : CallScreeningService() {
             isTest: Boolean,
             showCallerId: Boolean = false,
             logger: ILogger? = null,
+            identityToken: Long? = null,
         ): ICheckResult {
             logi("processCall()")
+            val token = identityToken ?: if (showCallerId) CallerIdentitySession.begin() else 0L
 
             // 0. check the number with all rules, get the result
             val (r, fullScreeningLog, anythingWrong) = Checker.checkCall(
@@ -295,15 +299,11 @@ class CallScreeningService : CallScreeningService() {
                     maybeAutoReportCall(ctx, r, recordId, rawNumber, isTest)
                 } else { // allowed
                     // 4. Show CallerID window
-                    withContext(Main) {
-                        if (showCallerId) {
-                            showCallerIdWindow(
-                                ctx = ctx,
-                                reason = r.resultReasonStr(ctx),
-                                geolocation = numberGeoLocation(ctx, rawNumber),
-                                carrier = numberCarrier(ctx, rawNumber)
-                            )
-                        }
+                    // Resolve offline number metadata on the screening worker, not on
+                    // the main thread used to attach the overlay view.
+                    if (showCallerId) {
+                        CallerIdentityPresenter.launch(ctx, rawNumber, cnap,
+                            if (r.byType == Def.RESULT_ALLOWED_BY_DEFAULT) null else r.resultReasonStr(ctx), token)
                     }
                 }
 

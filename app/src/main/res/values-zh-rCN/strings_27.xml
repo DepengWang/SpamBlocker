@@ -72,6 +72,10 @@
         <title>支持的标签</title>: <br>
         - <minor>{reason}</minor> <br>
         &emsp; 通话被允许的原因，与通话记录中显示的原因相同。 <br>
+        - <minor>{number}</minor> <br>
+        &emsp; 来电号码。 <br>
+        - <minor>{contact}</minor> <br>
+        &emsp; 联系人名称或来电显示名称（如果有）。 <br>
         - <minor>{geolocation}</minor> <br>
         &emsp; 电话号码的地理位置。 <br>
         - <minor>{carrier}</minor> <br>
@@ -82,6 +86,14 @@
         ]]>
     </string>
     <string name="background_color">背景颜色</string>
+    <string name="caller_id_duration">显示时长（秒）</string>
+    <string name="caller_id_show_contact">显示联系人</string>
+    <string name="caller_id_font_size">字号（10–32 sp）</string>
+    <string name="caller_id_show_for_contacts">联系人来电显示浮窗</string>
+    <string name="caller_id_duration_help">0：不计时。1–600：按设定秒数隐藏。通话结束时始终隐藏。</string>
+    <string name="caller_id_keep_after_answer">接听后保留浮窗</string>
+    <string name="caller_id_keep_after_answer_help">开启后保留当前浮窗，直到显示时长到期或通话结束；默认关闭。</string>
+    <string name="caller_id_contacts_help">需有通讯录权限，且来电号码匹配通讯录联系人。</string>
     <string name="wait">等待</string>
     <string name="help_action_wait">
         <![CDATA[
@@ -131,4 +143,78 @@
         屏蔽来自 <no_translate><sample>Verizon Wireless</sample></no_translate> 的号码 <br>
         ]]>
     </string>
+    <string name="cn_caller_theme">浮窗主题</string>
+    <string name="cn_theme_custom">自定义</string>
+    <string name="cn_theme_dark">深色</string>
+    <string name="cn_theme_light">浅色</string>
+    <string name="cn_show_outgoing">显示去电</string>
+    <string name="cn_outgoing_help">默认关闭。仅在系统提供去电详情时生效，通话结束时清理浮窗。</string>
+    <string name="cn_show_sources">显示来源</string>
+    <string name="cn_risk_conflict">来源有冲突，请谨慎核实</string>
+    <string name="cn_risk_high">来源提示高风险，仅供参考</string>
+    <string name="cn_risk_medium">来源提示风险，请谨慎接听</string>
+    <string name="cn_source_prefix">来源：%1$s</string>
+    <string name="cn_identity">号码识别</string>
+    <string name="cn_configure">配置</string>
+    <string name="cn_save">保存</string>
+    <string name="cn_saved">已保存</string>
+    <string name="cn_invalid_config">JSON 或选项无效：最多 6 个不同来源 ID，启用来源须使用 HTTPS，方法限 GET/POST，总超时限 250–5000 毫秒。</string>
+    <string name="cn_sources_json">数据源 JSON</string>
+    <string name="cn_example">填入示例</string>
+    <string name="cn_identity_help">在线来源默认关闭。启用后向接口发送陌生号码，不上传通讯录联系人来电号码；本功能只显示识别信息，不自动拦截。支持 CallerInfo 旧式自定义 API：参数 tel/key、返回 result.*、error_code=0。模板可用 {number}（E.164）、{domestic}（国内号码）；参数值也可引用 {shared_pref(baidu_api_key)}、{shared_pref(juhe_api_key)} 或 {shared_pref(tmini_api_key)}。接口来源按 JSON 顺序合并。Tmini 是按次收费接口，号码和 Key 会经 HTTPS 发送到服务端；Key 存在客户端有被提取风险，更安全的方式是通过自有服务端代理。腾讯、360、电话邦仍待正式文档及授权。</string>
+    <string name="cn_cache_policy">缓存策略 JSON</string>
+    <string name="cn_cache_policy_help">此策略适用于通用身份缓存。Tmini 成功结果（含未标记）会永久保存在 marked.db，不自动过期或淘汰，以减少付费请求；点“清空缓存”可手动删除。接口错误不缓存为无标记。</string>
+    <string name="cn_query_timeout">总超时（毫秒）</string>
+    <string name="cn_test_help">先保存再测试。输入号码会发送到已保存且启用的来源，结果可能来自缓存。无标记不代表安全。</string>
+    <string name="cn_test_number">测试号码</string>
+    <string name="cn_query_test">测试查询</string>
+    <string name="cn_invalid_number">号码无效</string>
+    <string name="cn_query_failed">查询失败</string>
+    <string name="cn_clear_cache">清空缓存</string>
+    <string name="cn_cache_cleared">缓存已清空</string>
+    <string name="cn_manual_lookup">手动查号</string>
+    <string name="cn_lookup_help">可输入带空格或连字符的号码。先查本地号段库，再按已启用的数据源查询；查询不会自动拦截。</string>
+    <string name="cn_manual_number">电话号码</string>
+    <string name="cn_query">查询</string>
+    <string name="cn_lookup_loading">正在查询…</string>
+    <string name="cn_no_identity">没有查到号码识别信息</string>
+    <string name="cn_save_lookup">保存查询</string>
+    <string name="cn_lookup_saved">已保存到查询历史</string>
+    <string name="cn_recent_lookups">最近手动查询</string>
+    <string name="cn_custom_mark">自定义标记</string>
+    <string name="cn_mark_name">标记内容</string>
+    <string name="cn_save_mark">保存标记</string>
+    <string name="cn_mark_saved">标记已保存</string>
+    <string name="cn_allow_number">加入白名单</string>
+    <string name="cn_block_number">加入黑名单</string>
+    <string name="cn_manual_allow_rule">手动查询：号码白名单</string>
+    <string name="cn_manual_block_rule">手动查询：号码黑名单</string>
+    <string name="cn_rule_exists">已有相同号码规则，请到号码规则中检查</string>
+    <string name="cn_rule_allow_added">已添加白名单规则</string>
+    <string name="cn_rule_block_added">已添加黑名单规则</string>
+    <string name="cn_identity_section">号码识别与历史展示</string>
+    <string name="cn_identity_short">归属地、运营商和在线查询</string>
+    <string name="cn_history_location">在通话记录显示归属地</string>
+    <string name="cn_history_carrier">在通话记录显示运营商</string>
+    <string name="cn_preset_400">拦截 400/800 业务号码</string>
+    <string name="cn_preset_400_help">仅对主动添加的新来电生效；可能拦截正常企业客服或售后回拨，请确认适合自己的场景。</string>
+    <string name="cn_preset_95">拦截 95/96 短号</string>
+    <string name="cn_preset_95_help">仅对主动添加的新来电生效；95/96 号码也可能是银行、政务或企业服务电话，请谨慎启用。</string>
+    <string name="cn_only_offline">仅查询本地离线库</string>
+    <string name="cn_ignored_prefixes">跳过在线查询的号码前缀</string>
+    <string name="cn_baidu_key">百度 API 密钥</string>
+    <string name="cn_juhe_key">聚合数据 API 密钥</string>
+    <string name="cn_tmini_key">Tmini API 密钥</string>
+    <string name="cn_tmini_mark_api">载入 Tmini 付费聚合标记接口</string>
+    <string name="cn_tmini_default_enabled">已载入并启用新站接口。每次成功查询按 Tmini 规则扣积分。</string>
+    <string name="cn_tmini_default_needs_key">已载入新站接口但未启用。填写密钥后再载入一次。</string>
+    <string name="cn_legacy_api_example">CallerInfo API 示例</string>
+    <string name="cn_juhe_default_api">载入聚合数据默认接口</string>
+    <string name="cn_juhe_default_enabled">已载入并启用。请求会发送号码到聚合数据；可在查询测试中验证。</string>
+    <string name="cn_juhe_default_needs_key">已载入接口地址和参数，但尚未启用：请先填写聚合数据 API Key，再点此按钮启用。</string>
+    <string name="cn_overlay_width">浮窗宽度（dp，0 为屏幕宽）</string>
+    <string name="cn_overlay_height">浮窗高度（dp，0 为自适应）</string>
+    <string name="cn_overlay_size_help">默认宽度为屏幕宽度。可设置 220–1000 dp；高度可设置 120–500 dp，0 为自适应且最高不超过 500 dp。超出部分可滚动。</string>
+    <string name="cn_api_type">优先来源 ID（-1 按列表顺序）</string>
+    <string name="cn_legacy_credentials_help">API 密钥保存在本机偏好设置中，不会写入应用配置备份。Tmini Key 会随查询请求发送，客户端存储仍有被提取风险；请勿将密钥放进导出的来源 JSON。</string>
 </resources>

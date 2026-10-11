@@ -11,7 +11,7 @@
 
 ## 设置入口
 
-设置 → 即时查询 → 号码识别 → 配置。先保存，再测试。测试只使用已经保存且启用的来源；空来源列表只查询离线库。
+设置 → 归属地、运营商和在线查询 → 识别来源。修改后先保存，再到同组的“查询测试”验证。测试只使用已经保存且启用的来源；空来源列表只查询离线库。来源配置、测试与数据管理均为独立全屏页，自定义 JSON 收入高级配置。添加服务会追加来源，不覆盖其他配置。
 
 每个来源有独立 `enabled` 开关；在线来源默认关闭。来电自动查询不会上传通讯录联系人号码。用户主动测试时，会将输入号码发送至启用来源。
 
@@ -66,19 +66,19 @@
 
 ### 聚合数据默认接口预设
 
-设置页的“载入聚合数据默认接口”会写入当前官方手机归属地接口：`https://apis.juhe.cn/mobile/get`，GET 参数为 `phone={domestic}` 与 `key={shared_pref(juhe_api_key)}`，检查 `error_code=0`，读取 `result.province/city/company`。这是 CallerInfo 中聚合数据来源的可替换、HTTPS 通用适配；预设使用 legacy Juhe 来源 ID `1`，可配合 `api_type` 优先级。启用前必须填写用户自己的有效 Juhe API Key。没有密钥时只加载禁用配置，不发起号码查询。未将未核实的旧百度地址写成默认项。
+识别来源页的“添加服务 → 聚合数据”会追加当前官方手机归属地接口：`https://apis.juhe.cn/mobile/get`，GET 参数为 `phone={domestic}` 与 `key={shared_pref(juhe_api_key)}`，检查 `error_code=0`，读取 `result.province/city/company`。这是 CallerInfo 中聚合数据来源的可替换、HTTPS 通用适配；预设使用 legacy Juhe 来源 ID `1`，可配合 `api_type` 优先级。启用前必须填写用户自己的有效 Juhe API Key。没有密钥时只加载禁用配置，不发起号码查询。未将未核实的旧百度地址写成默认项。
 
 来源：[聚合数据官方手机归属地 API 文档](https://www.juhe.cn/docs/api/id/11)；CallerInfo/PhoneNumber 的在线来源顺序及凭据机制见上方 legacy README。
 
 ### Tmini 聚合号码标记预设
 
-以[新站接口详情](https://api.tmini.net/detail/1)为准。GET `https://api.tmini.net/apis/checkmark`，参数 `key={shared_pref(tmini_api_key)}` 和 `phone={domestic}`；成功码为 `code=200`，通过 `results.*.tags.*.name` 收集各平台标签，并读取 `region`、`certName`。其他状态（包括 `code=0` 的积分余额不足）按接口错误处理，不视为无标记。设置页填入 API Key 后载入预设启用；查询号码和 Key 会随 HTTPS 请求发送到 Tmini。
+以[新站接口详情](https://api.tmini.net/detail/1)为准。GET `https://api.tmini.net/apis/checkmark`，参数 `key={shared_pref(tmini_api_key)}` 和 `phone={domestic}`；成功码为 `code=200`，通过 `results.*.tags.*.name` 收集各平台标签，并读取 `region`、`certName`。其他状态（包括 `code=0` 的积分余额不足）按接口错误处理，不视为无标记。识别来源页通过“添加服务 → Tmini”追加预设，填入 API Key 并启用、保存；查询号码和 Key 会随 HTTPS 请求发送到 Tmini。
 
 该接口为付费接口，页面注明每次成功调用扣 300 积分。供应商文档明确建议 Key 仅在服务端使用，避免放入客户端代码或日志。当前应用直连模式将 Key 保存在设备私有设置中，但仍不等同于服务端保管，存在设备提取风险；生产使用更推荐由用户自有服务端代理请求。用户只应在了解风险后配置自己的、可单独撤销的 Key。
 
-测试查询遇到 HTTP/业务错误时会显示安全的诊断信息（HTTP 状态、业务码及接口返回的 message/msg），不会显示请求 URL 或 Key。连接异常会显示异常类型。保存/更换 Tmini Key 会清除通用查询表里的短期结果，避免把旧 Key 下的错误缓存误认为新 Key 查询失败；永久成功记录仍保留。Tmini 的 `region` 会尽量解析成省、市、运营商；地区补充写入 `marked.db` 工作副本的 `tmini_region_overlay` 表，按完整号码保存，仅在本地 `phone.dat` / libphonenumber 字段缺失时填补，不改写 APK 中不可变的号码段元数据，也不覆盖已有归属地。
+测试查询遇到 HTTP/业务错误时会显示安全的诊断信息（HTTP 状态、业务码及接口返回的 message/msg），不会显示请求 URL 或 Key。连接异常显示脱敏原因及失败阶段，结果区分本地/缓存/在线并显示耗时。保存配置仅清除通用查询表的错误/超时记录；重新请求失败项也仅跳过错误/超时缓存，成功结果及永久数据仍保留。Tmini 的 `region` 会尽量解析成省、市、运营商；地区补充写入 `marked.db` 工作副本的 `tmini_region_overlay` 表，按完整号码保存，仅在本地 `phone.dat` / libphonenumber 字段缺失时填补，不改写 APK 中不可变的号码段元数据，也不覆盖已有归属地。
 
-调用顺序：先查原始本地 `phone_number` 标记；本地命中则跳过 Tmini。未命中时查同一个应用私有 `marked.db` 工作副本中的 `tmini_mark_cache`；已有记录不论写入时间都跳过付费请求。成功标记和成功无标记均永久保存，不自动过期、不因数量上限淘汰；只有用户在设置中点“清空缓存”才删除。错误不写入标记库，也不会被当成无标记。旧版本已有缓存升级时会转为永久记录。每条缓存保存标签、地区/认证字段及查询时间；不会改写 APK 中的 `res/raw/marked_2016.db` 原始快照。该独立表位于应用私有的可写工作副本，便于未来纳入线上备份/同步；当前尚未实现线上备份。
+调用顺序：先查原始本地 `phone_number` 标记；本地命中则跳过 Tmini。未命中时查同一个应用私有 `marked.db` 工作副本中的 `tmini_mark_cache`；已有记录不论写入时间都跳过付费请求。成功标记和成功无标记均永久保存，不自动过期、不因数量上限淘汰；只有在“数据与备份 → 查询数据”明确确认“删除付费查询数据”才删除；清理失败记录或通用缓存不删除永久数据。删除永久数据会同时清理其归属地补充及该来源通用缓存，保留内置旧标签库。错误不写入标记库，也不会被当成无标记。旧版本已有缓存升级时会转为永久记录。每条缓存保存标签、地区/认证字段及查询时间；不会改写 APK 中的 `res/raw/marked_2016.db` 原始快照。该独立表位于应用私有的可写工作副本，便于未来纳入线上备份/同步；当前尚未实现线上备份。
 
 参考原始文档：[PhoneNumber README](https://github.com/xdtianyu/PhoneNumber/blob/legacy/README.md)（凭据、only-offline、api_type）与 [CUSTOM.md](https://github.com/xdtianyu/PhoneNumber/blob/legacy/CUSTOM.md)（`tel/key` 和 `error_code/result` 响应）。
 
@@ -102,7 +102,7 @@
 
 新增识别不参与系统筛选决定，筛选响应不等待此聚合层。先显示离线数据，然后在原窗口替换在线内容，不重复附加窗口、不重播动画、不重置时长。挂断、默认接听隐藏、计时到期、关闭浮窗、新来电及预览会使旧会话失效并取消旧查询。
 
-总超时默认 3000 ms，可设 250–5000 ms，包括等待并发许可。单次连接/读取超时 3000 ms，响应上限 256 KiB，不自动重试或跨域重定向；取消时断开连接。接口异常不会影响其他来源或离线显示；数据库缓存异常会退化为非缓存查询。
+自动来电查询总超时默认 3000 ms，可设 250–5000 ms，包括等待并发许可。手动查询/测试使用独立时限，默认 15000 ms，测试页可选 5/15/30 秒，不改变自动查询预算。单次连接/读取时限与当前预算一致，同时受总超时取消约束。响应上限 256 KiB，不自动重试或跨域重定向；取消时断开连接。接口异常不会影响其他来源或离线显示；数据库缓存异常会退化为非缓存查询。
 
 ## 待实机人工验收
 

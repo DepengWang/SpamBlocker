@@ -616,6 +616,7 @@ class CallerID : IConfig {
     var x = 0
     var y = 0
     var bgColor: Int = 0
+    var transparentBackground = false
     var template = ""
     var showContact = true
     var durationSec = 0
@@ -633,6 +634,7 @@ class CallerID : IConfig {
         x = spf.x
         y = spf.y
         bgColor = spf.bgColor
+        transparentBackground = spf.transparentBackground
         template = spf.template
         showContact = spf.showContact
         durationSec = spf.durationSec
@@ -652,6 +654,7 @@ class CallerID : IConfig {
         spf.x = x
         spf.y = y
         spf.bgColor = bgColor
+        spf.transparentBackground = transparentBackground
         spf.template = template
         spf.showContact = showContact
         spf.durationSec = durationSec.coerceIn(0, 600)
@@ -814,6 +817,7 @@ class ApiQuery : IConfig {
     var identitySources = "[]"
     var identityCachePolicy = "{}"
     var identityTimeoutMs = 3000
+    var identityTestTimeoutMs = 15000
     var onlyOffline = false
     var ignoredNumberPrefixes = ""
     var apiType = -1
@@ -828,6 +832,7 @@ class ApiQuery : IConfig {
         identitySources = spf.identitySources
         identityCachePolicy = spf.identityCachePolicy
         identityTimeoutMs = spf.identityTimeoutMs
+        identityTestTimeoutMs = spf.identityTestTimeoutMs
         onlyOffline = spf.onlyOffline
         ignoredNumberPrefixes = spf.ignoredNumberPrefixes
         apiType = spf.apiType
@@ -847,6 +852,7 @@ class ApiQuery : IConfig {
         spf.identitySources = identitySources
         spf.identityCachePolicy = identityCachePolicy
         spf.identityTimeoutMs = identityTimeoutMs.coerceIn(250, 5000)
+        spf.identityTestTimeoutMs = identityTestTimeoutMs.coerceIn(1000, 30_000)
         spf.onlyOffline = onlyOffline
         spf.ignoredNumberPrefixes = ignoredNumberPrefixes
         spf.apiType = apiType

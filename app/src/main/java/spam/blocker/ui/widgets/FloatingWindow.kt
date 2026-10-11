@@ -18,6 +18,7 @@ import android.view.ViewGroup
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import spam.blocker.ui.slightDiff
+import spam.blocker.util.CallerIdAppearance
 import java.lang.ref.WeakReference
 
 private const val AnimationDurationMs: Long = 120L
@@ -318,7 +319,9 @@ object FloatingWindow {
             else dpToPx(ctx, configuredHeightDp.coerceAtMost(MaxHeightDp)).coerceAtLeast(minHeight(ctx))
     }
 
-    private fun createOverlayBackground(ctx: Context): GradientDrawable {
+    private fun createOverlayBackground(ctx: Context): GradientDrawable? {
+        // A fully transparent background has no drawable, including no border.
+        if (!CallerIdAppearance.hasBackground(backgroundColor)) return null
         return GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = dpToPx(ctx, CornerRadiusDp)

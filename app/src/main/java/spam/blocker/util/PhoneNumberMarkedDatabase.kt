@@ -160,14 +160,30 @@ internal object PhoneNumberMarkedDatabase {
         }.getOrNull()
     }
 
-    fun clearApiCache(context: Context) {
-        val file = installDatabase(context) ?: return
-        runCatching {
-            SQLiteDatabase.openDatabase(file.absolutePath, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
-                db.delete("tmini_mark_cache", null, null)
-                db.delete("tmini_region_overlay", null, null)
+    fun savedResultCount(context: Context): Int? {
+        val file = installDatabase(context) ?: return null
+        return runCatching {
+            SQLiteDatabase.openDatabase(file.absolutePath, null, SQLiteDatabase.OPEN_READONLY).use { db ->
+                db.rawQuery("SELECT COUNT(*) FROM tmini_mark_cache", null).use { cursor ->
+                    if (cursor.moveToFirst()) cursor.getInt(0) else 0
+                }
             }
-        }
+        }.getOrNull()
+    }
+
+    fun clearApiCache(context: Context): Boolean {
+        val file = installDatabase(context) ?: return false
+        return runCatching {
+            SQLiteDatabase.openDatabase(file.absolutePath, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
+                db.beginTransaction()
+                try {
+                    db.delete("tmini_mark_cache", null, null)
+                    db.delete("tmini_region_overlay", null, null)
+                    db.setTransactionSuccessful()
+                } finally { db.endTransaction() }
+            }
+            true
+        }.getOrDefault(false)
     }
 
     private fun installDatabase(context: Context): File? = synchronized(lock) {

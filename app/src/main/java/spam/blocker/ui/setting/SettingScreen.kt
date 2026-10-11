@@ -12,6 +12,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -40,6 +42,7 @@ import spam.blocker.ui.setting.api.ApiQueryPresets
 import spam.blocker.ui.setting.api.ApiReportPresets
 import spam.blocker.ui.setting.api.ApiSummary
 import spam.blocker.ui.setting.api.IdentitySettings
+import spam.blocker.ui.setting.api.IdentityDataSettings
 import spam.blocker.ui.setting.bot.BotHeader
 import spam.blocker.ui.setting.bot.BotList
 import spam.blocker.ui.setting.bot.BotSummary
@@ -108,7 +111,7 @@ import spam.blocker.util.Lambda
 import spam.blocker.util.Util.isFreshInstall
 import spam.blocker.util.spf
 
-const val SettingRowMinHeight = 40
+const val SettingRowMinHeight = 48
 
 @Composable
 fun SettingScreen() {
@@ -118,13 +121,7 @@ fun SettingScreen() {
     val testingTrigger = rememberSaveable { mutableStateOf(false) }
     TestDialog(testingTrigger)
 
-    // Hide FAB when scrolled to the bottom
     val scrollState = rememberScrollState()
-    val bottomReached by remember {
-        derivedStateOf {
-            scrollState.maxValue > 0 && scrollState.value == scrollState.maxValue
-        }
-    }
 
     val priorityConflicts = remember { mutableStateListOf<IChecker>() }
 
@@ -164,49 +161,40 @@ fun SettingScreen() {
     val conflictTrigger = remember { mutableStateOf(false) }
     PriorityConflictDialog(trigger = conflictTrigger, conflicts = priorityConflicts)
 
-    // Show text "Testing" on the testing tube icon, and hide this text once it's clicked.
     val spfSections = spf.SettingSections(ctx)
-    val spfGlobal = spf.Global(ctx)
-
-    var alsoShowTestButtonLabel by remember {
-        mutableStateOf(
-            isFreshInstall(ctx) && !spfGlobal.isTestIconClicked
-        )
-    }
-    FabWrapper(
-        fabRow = { positionModifier ->
-            Fab(
-                visible = !bottomReached,
-                text = if (alsoShowTestButtonLabel) Str(R.string.title_rule_testing) else null,
-                iconId = R.drawable.ic_tube,
-                iconColor = White,
-                bgColor = if (priorityConflicts.isEmpty()) C.teal200 else C.warning,
-                modifier = positionModifier
-            ) {
-                checkConflicts()
-                if (priorityConflicts.isEmpty()) {
-                    testingTrigger.value = true
-
-                    spfGlobal.isTestIconClicked = true
-                    alsoShowTestButtonLabel = false
-                } else {
-                    conflictTrigger.value = true
-                }
-            }
-        }
-    ) {
-
+    Column {
         NormalColumnScrollbar(state = scrollState) {
             Column(
                 modifier = M
                     .verticalScroll(scrollState)
                     .padding(top = 8.dp)
             ) {
+                ScreenHeading(Str(R.string.ui_setting_title), Str(R.string.ui_setting_subtitle)) {
+                    TextButton(onClick = {
+                        checkConflicts()
+                        if (priorityConflicts.isEmpty()) {
+                            testingTrigger.value = true
+                        } else {
+                            conflictTrigger.value = true
+                        }
+                    }) {
+                        Text(Str(R.string.ui_rule_test),
+                            color = if (priorityConflicts.isEmpty()) C.infoBlue else C.warning)
+                    }
+                }
                 // global
                 GloballyEnabled()
 
+                SettingsGroup(title = Str(R.string.ui_call_display)) {
+                    CallerID()
+                    HistoryDisplayOptions()
+                }
+                SettingsGroup(title = Str(R.string.cn_identity_short)) {
+                    IdentitySettings()
+                }
+
                 // quick settings
-                Section(
+                SettingsGroup(
                     title = Str(R.string.quick_settings),
                     horizontalPadding = 8,
                     isCollapsed = remember { mutableStateOf(spfSections.isQuickSettingsCollapsed) },
@@ -215,16 +203,19 @@ fun SettingScreen() {
                     },
                     content = {
                         Column {
+                            SettingsSubheading(Str(R.string.ui_screening_signals))
                             Contacts()
                             Stir()
                             SpamDB()
                             LocalAI()
+                            SettingsSubheading(Str(R.string.ui_trust_rules))
                             RepeatedCall()
                             Dialed()
                             Answered()
-                            OffTime()
                             EmergencySituation()
                             RecentApps()
+                            SettingsSubheading(Str(R.string.ui_context_rules))
+                            OffTime()
                             MeetingMode()
 
                             HorizontalDivider(thickness = 1.dp, color = G.palette.background.slightDiff())
@@ -255,26 +246,7 @@ fun SettingScreen() {
                     }
                 )
 
-                Section(
-                    title = Str(R.string.cn_identity_section),
-                    horizontalPadding = 8,
-                    isCollapsed = remember { mutableStateOf(false) },
-                    content = {
-                        Column {
-                            CallerID()
-                            HistoryDisplayOptions()
-                            IdentitySettings()
-                        }
-                    },
-                    contentCollapsed = {
-                        FlowRowSpaced(4) {
-                            CallerIDSummary()
-                            Text(Str(R.string.cn_identity_short), color = G.palette.textGrey)
-                        }
-                    }
-                )
-
-                Section(
+                SettingsGroup(
                     title = Str(R.string.regex_settings),
                     horizontalPadding = 8,
                     isCollapsed = remember { mutableStateOf(spfSections.isRegexSettingsCollapsed) },
@@ -330,7 +302,7 @@ fun SettingScreen() {
                 )
 
                 // Instant Query
-                Section(
+                SettingsGroup(
                     title = Str(R.string.instant_query),
                     horizontalPadding = 8,
                     isCollapsed = remember { mutableStateOf(spfSections.isInstantQueryCollapsed) },
@@ -353,7 +325,7 @@ fun SettingScreen() {
                 )
 
                 // Report Number
-                Section(
+                SettingsGroup(
                     title = Str(R.string.report_number),
                     horizontalPadding = 8,
                     isCollapsed = remember { mutableStateOf(spfSections.isReportNumberCollapsed) },
@@ -376,7 +348,7 @@ fun SettingScreen() {
                 )
 
                 // Automation
-                Section(
+                SettingsGroup(
                     title = Str(R.string.automation),
                     horizontalPadding = 8,
                     isCollapsed = remember { mutableStateOf(spfSections.isAutomationCollapsed) },
@@ -398,8 +370,13 @@ fun SettingScreen() {
                     }
                 )
 
+                SettingsGroup(title = Str(R.string.ui_data_backup)) {
+                    IdentityDataSettings()
+                    BackupRestore()
+                }
+
                 // Miscellaneous
-                Section(
+                SettingsGroup(
                     title = Str(R.string.miscellaneous),
                     horizontalPadding = 8,
                     isCollapsed = remember { mutableStateOf(spfSections.isMiscCollapsed) },
@@ -410,7 +387,6 @@ fun SettingScreen() {
                         Column {
                             Language()
                             Theme()
-                            BackupRestore()
                             SettingRow {
                                 RowVCenterSpaced(8) {
                                     FAQ()
@@ -452,10 +428,10 @@ fun SettingLabel(
     Text(
         text = stringResource(id = labelId),
         modifier = modifier,
-        maxLines = 1,
-        fontSize = 16.sp,
+        maxLines = 2,
+        fontSize = 15.sp,
         fontWeight = FontWeight.Medium,
-        color = color ?: G.palette.infoBlue,
+        color = color ?: MaterialTheme.colorScheme.onSurface,
     )
 }
 

@@ -1,6 +1,10 @@
 package spam.blocker.ui.history
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
@@ -12,8 +16,14 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.unit.sp
 import spam.blocker.ui.M
 import spam.blocker.R
 import spam.blocker.def.Def
@@ -25,6 +35,7 @@ import spam.blocker.util.LockedDebouncer
 import spam.blocker.util.TimeUtils.FreshnessColor
 import spam.blocker.util.spf
 import spam.blocker.G
+import spam.blocker.ui.setting.ScreenHeading
 
 object HistoryOptions {
     val showHistoryIndicator : MutableState<Boolean> = mutableStateOf(false)
@@ -42,6 +53,7 @@ fun HistoryScreen(
     vm: HistoryViewModel,
 ) {
     val ctx = LocalContext.current
+    val resources = LocalResources.current
 
     // Load history options
     LaunchedEffect(true) {
@@ -85,6 +97,12 @@ fun HistoryScreen(
         Column(modifier = M.padding(8.dp, 8.dp, 8.dp, 2.dp)) {
             val lookupTrigger = remember { mutableStateOf(false) }
             NumberLookupDialog(lookupTrigger)
+            ScreenHeading(Str(if (vm.forType == Def.ForNumber) R.string.ui_history_title_calls else R.string.ui_history_title_sms),
+                resources.getString(R.string.ui_history_summary, vm.records.size, vm.records.count { it.isBlocked() })) {
+                if (vm.forType == Def.ForNumber) TextButton(onClick = { lookupTrigger.value = true }) {
+                    Text(Str(R.string.cn_manual_lookup))
+                }
+            }
             // Use a Debouncer here as there could be LOTS of history records.
             val debouncer = remember { LockedDebouncer() }
             SearchBox(vm.searchEnabled, vm.filter) {
@@ -92,15 +110,18 @@ fun HistoryScreen(
                     vm.reload(ctx)
                 }
             }
-            if (vm.forType == Def.ForNumber) {
-                StrokeButton(Str(R.string.cn_manual_lookup), color = G.palette.textGrey) {
-                    lookupTrigger.value = true
+            if (vm.records.isEmpty()) {
+                val filtered = vm.filter.value.isNotBlank() || !HistoryOptions.showHistoryPassed.value || !HistoryOptions.showHistoryBlocked.value
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(24.dp)) {
+                        Text(Str(if (filtered) R.string.ui_history_no_matches else if (vm.forType == Def.ForNumber)
+                            R.string.ui_history_empty_calls else R.string.ui_history_empty_sms), fontSize = 18.sp)
+                        Text(Str(if (filtered) R.string.ui_history_no_matches_hint else R.string.ui_history_empty_hint),
+                            color = G.palette.textGrey, fontSize = 13.sp)
+                    }
                 }
-            }
-            HistoryList(
-                lazyState = listState,
-                vm = vm,
-            )
+            } else HistoryList(lazyState = listState, vm = vm)
         }
     }
 }

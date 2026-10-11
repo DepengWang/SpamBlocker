@@ -31,4 +31,38 @@ class NumberIdentityCache(ctx: Context) : IdentityCache {
         } finally { db.endTransaction() }
     }
     fun clear() { helper.writableDatabase.delete("cn_identity_cache", null, null) }
+
+    fun stats(): Pair<Int, Int> {
+        var failures = 0
+        var total = 0
+        helper.readableDatabase.rawQuery("SELECT payload FROM cn_identity_cache", null).use { cursor ->
+            while (cursor.moveToNext()) {
+                total++
+                val evidence = runCatching { IdentityJson.json.decodeFromString<IdentityEvidence>(cursor.getString(0)) }.getOrNull()
+                if (evidence?.status in listOf("error", "timeout")) failures++
+            }
+        }
+        return total to failures
+    }
+
+    /** Only remove transport/API failures; never discard a successful paid result. */
+    fun clearFailures() = clearMatching { it.status in listOf("error", "timeout") }
+
+    fun clearSource(sourceId: String) = clearMatching { it.sourceId == sourceId }
+
+    private fun clearMatching(matches: (IdentityEvidence) -> Boolean) {
+        val db = helper.writableDatabase
+        db.beginTransaction()
+        try {
+            val ids = mutableListOf<Long>()
+            db.rawQuery("SELECT rowid, payload FROM cn_identity_cache", null).use { cursor ->
+                while (cursor.moveToNext()) {
+                    val evidence = runCatching { IdentityJson.json.decodeFromString<IdentityEvidence>(cursor.getString(1)) }.getOrNull()
+                    if (evidence != null && matches(evidence)) ids += cursor.getLong(0)
+                }
+            }
+            ids.forEach { db.delete("cn_identity_cache", "rowid = ?", arrayOf(it.toString())) }
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
+    }
 }

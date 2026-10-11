@@ -128,13 +128,9 @@ fun GloballyEnabled() {
         onPauseOrDispose { }
     }
 
-    Section(
+    SettingsGroup(
         title = Str(R.string.screening),
         horizontalPadding = 8,
-        isCollapsed = remember { mutableStateOf(spfSections.isScreeningSectionCollapsed) },
-        onToggle = {
-            spfSections.isScreeningSectionCollapsed = it
-        },
         contentCollapsed = { GloballyEnabledSummary() }
     ) {
         Column {

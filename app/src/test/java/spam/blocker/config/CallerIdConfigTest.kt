@@ -13,6 +13,7 @@ class CallerIdConfigTest {
         val restored = Json.decodeFromString<CallerID>("""{"enabled":true,"template":"{reason}"}""")
         assertFalse(restored.keepAfterAnswer)
         assertFalse(restored.showOutgoing)
+        assertFalse(restored.transparentBackground)
         assertTrue(restored.showSources)
         assertEquals(0, restored.theme)
         assertTrue(restored.showContact)
@@ -33,6 +34,7 @@ class CallerIdConfigTest {
             showOutgoing = true
             showSources = false
             theme = 2
+            transparentBackground = true
         }
         val restored = Json.decodeFromString<CallerID>(Json.encodeToString(original))
         assertTrue(restored.keepAfterAnswer)
@@ -43,6 +45,7 @@ class CallerIdConfigTest {
         assertTrue(restored.showOutgoing)
         assertFalse(restored.showSources)
         assertEquals(2, restored.theme)
+        assertTrue(restored.transparentBackground)
     }
 
     @Test

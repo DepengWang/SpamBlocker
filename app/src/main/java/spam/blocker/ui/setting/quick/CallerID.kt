@@ -7,6 +7,7 @@ import android.view.Gravity
 import android.view.View
 import android.widget.TextView
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.MutableState
@@ -21,7 +22,10 @@ import androidx.compose.ui.platform.LocalContext
 import spam.blocker.G
 import spam.blocker.R
 import spam.blocker.ui.setting.LabeledRow
+import spam.blocker.ui.setting.SettingsPage
+import spam.blocker.ui.setting.SettingsGroup
 import spam.blocker.ui.widgets.ColorPickerButton
+import spam.blocker.ui.widgets.CheckBox
 import spam.blocker.ui.widgets.FloatingWindow
 import spam.blocker.ui.widgets.GreyIcon16
 import spam.blocker.ui.widgets.GreyText
@@ -36,6 +40,7 @@ import spam.blocker.ui.widgets.SwitchBox
 import spam.blocker.ui.widgets.ComboBox
 import spam.blocker.ui.widgets.LabelItem
 import spam.blocker.util.Permission
+import spam.blocker.util.CallerIdAppearance
 import spam.blocker.util.PermissionWrapper
 import spam.blocker.util.spf
 
@@ -127,11 +132,7 @@ fun showCallerIdWindow(
             replaceContent(ctx, callerIdView(ctx, content, spf.fontSizeSp))
             return
         }
-        val background = when (spf.theme) {
-            1 -> 0xEE202124.toInt()
-            2 -> 0xEEF5F5F5.toInt()
-            else -> spf.bgColor
-        }
+        val background = CallerIdAppearance.backgroundColor(spf.theme, spf.bgColor, spf.transparentBackground)
         update(ctx, bgColor = background, x = spf.x, y = spf.y,
             widthDp = spf.windowWidthDp, heightDp = spf.windowHeightDp)
         onDrag = { newX, newY ->
@@ -207,6 +208,7 @@ private fun ConfigDialog(
     val spf = spf.CallerID(ctx)
 
     var bgColor by remember { mutableStateOf(Color(spf.bgColor)) }
+    var transparentBackground by remember { mutableStateOf(spf.transparentBackground) }
     var template by remember { mutableStateOf(spf.template) }
     var durationSec by remember { mutableIntStateOf(spf.durationSec) }
     var showContact by remember { mutableStateOf(spf.showContact) }
@@ -218,6 +220,7 @@ private fun ConfigDialog(
     var theme by remember { mutableIntStateOf(spf.theme.coerceIn(0, 2)) }
     var windowWidthDp by remember { mutableIntStateOf(if (spf.windowWidthDp == 0) 0 else spf.windowWidthDp.coerceIn(220, 1000)) }
     var windowHeightDp by remember { mutableIntStateOf(if (spf.windowHeightDp == 0) 0 else spf.windowHeightDp.coerceIn(120, 500)) }
+    var advanced by remember { mutableStateOf(false) }
 
     // Destroy the floating window when the app is killed
     DisposableEffect(true) {
@@ -225,14 +228,19 @@ private fun ConfigDialog(
             FloatingWindow.hide(ctx)
         }
     }
-    PopupDialog(
-        trigger,
-        popupSize = PopupSize(),
+    if (trigger.value) SettingsPage(
+        Str(R.string.caller_id),
         onDismiss = {
             FloatingWindow.hide(ctx)
+            trigger.value = false
         },
-        buttons = {
+        actions = {
             val C = G.palette
+
+            TextButton(onClick = {
+                spam.blocker.util.CallerIdentitySession.invalidate()
+                showCallerIdWindow(ctx)
+            }, enabled = Permission.showOverlay.isGranted) { Text(Str(R.string.preview)) }
 
             val confirmTrigger = remember { mutableStateOf(false) }
             PopupDialog(
@@ -241,8 +249,10 @@ private fun ConfigDialog(
                     // Reset
                     StrokeButton(Str(R.string.reset), color = C.error) {
                         spf.bgColor = DefaultCallerIdBgColor
+                        spf.transparentBackground = false
                         spf.template = DefaultCallerIdTemplate
                         bgColor = Color(DefaultCallerIdBgColor)
+                        transparentBackground = false
                         template = DefaultCallerIdTemplate
                         spf.showContact = true
                         spf.durationSec = 0
@@ -264,7 +274,7 @@ private fun ConfigDialog(
                         spf.windowHeightDp = 0
                         windowWidthDp = 0
                         windowHeightDp = 0
-                        showCallerIdWindow(ctx)
+                        FloatingWindow.hide(ctx)
                         confirmTrigger.value = false
                     }
                 }
@@ -278,13 +288,17 @@ private fun ConfigDialog(
             }
         }
     ) {
+        SettingsGroup(Str(R.string.ui_overlay_appearance)) {
+        GreyText(Str(R.string.ui_overlay_live_hint))
+        TextButton(onClick = { FloatingWindow.hide(ctx) }) { Text(Str(R.string.ui_close_preview)) }
         // BG Color
         LabeledRow(R.string.cn_caller_theme) {
             ComboBox(listOf(R.string.cn_theme_custom, R.string.cn_theme_dark, R.string.cn_theme_light).mapIndexed { index, label ->
                 LabelItem(label = Str(label)) {
                     theme = index
                     spf.theme = index
-                    showCallerIdWindow(ctx)
+                    FloatingWindow.update(ctx, bgColor = CallerIdAppearance.backgroundColor(
+                        index, spf.bgColor, spf.transparentBackground))
                 }
             }, theme)
         }
@@ -292,7 +306,14 @@ private fun ConfigDialog(
             SwitchBox(showOutgoing) { showOutgoing = it; spf.showOutgoing = it }
         }
         LabeledRow(R.string.cn_show_sources) {
-            SwitchBox(showSources) { showSources = it; spf.showSources = it; showCallerIdWindow(ctx) }
+            SwitchBox(showSources) { showSources = it; spf.showSources = it }
+        }
+        LabeledRow(R.string.ui_overlay_transparent_background) {
+            CheckBox(checked = transparentBackground, onCheckChange = {
+                transparentBackground = it
+                spf.transparentBackground = it
+                FloatingWindow.update(ctx, bgColor = CallerIdAppearance.backgroundColor(spf.theme, spf.bgColor, it))
+            })
         }
         LabeledRow(R.string.background_color) {
             ColorPickerButton(
@@ -303,13 +324,15 @@ private fun ConfigDialog(
                         spf.bgColor = it.toArgb()
                         spf.theme = 0
                         theme = 0
-                        FloatingWindow.update(ctx, bgColor = spf.bgColor)
-                        showCallerIdWindow(ctx)
+                        FloatingWindow.update(ctx, bgColor = CallerIdAppearance.backgroundColor(
+                            spf.theme, spf.bgColor, spf.transparentBackground))
                     }
                 }
             )
         }
 
+        }
+        SettingsGroup(Str(R.string.ui_overlay_behavior)) {
         GreyText(Str(R.string.caller_id_duration_help))
         run {
             NumberInputBox(
@@ -329,7 +352,6 @@ private fun ConfigDialog(
             SwitchBox(showContact) {
                 showContact = it
                 spf.showContact = it
-                showCallerIdWindow(ctx)
             }
         }
 
@@ -347,6 +369,8 @@ private fun ConfigDialog(
             }
         }
 
+        }
+        SettingsGroup(Str(R.string.ui_overlay_size)) {
         NumberInputBox(
             intValue = fontSizeSp,
             labelId = R.string.caller_id_font_size,
@@ -354,7 +378,6 @@ private fun ConfigDialog(
                 if (!hasError && value != null && value in 10..32) {
                     fontSizeSp = value
                     spf.fontSizeSp = value
-                    showCallerIdWindow(ctx)
                 }
             },
         )
@@ -369,7 +392,6 @@ private fun ConfigDialog(
                     windowWidthDp = normalized
                     spf.windowWidthDp = normalized
                     FloatingWindow.update(ctx, widthDp = normalized)
-                    showCallerIdWindow(ctx)
                 }
             },
         )
@@ -382,11 +404,13 @@ private fun ConfigDialog(
                     windowHeightDp = normalized
                     spf.windowHeightDp = normalized
                     FloatingWindow.update(ctx, heightDp = normalized)
-                    showCallerIdWindow(ctx)
                 }
             },
         )
 
+        }
+        TextButton(onClick = { advanced = !advanced }) { Text(Str(R.string.ui_advanced)) }
+        if (advanced) SettingsGroup(Str(R.string.content_template)) {
         // 2. Template
         StrInputBox(
             text = template,
@@ -395,10 +419,9 @@ private fun ConfigDialog(
             onValueChange = {
                 template = it
                 spf.template = it
-
-                showCallerIdWindow(ctx)
             }
         )
+        }
     }
 }
 
@@ -410,7 +433,7 @@ fun CallerID() {
     var isEnabled by remember { mutableStateOf(spf.isEnabled && Permission.phoneState.isGranted && Permission.showOverlay.isGranted) }
 
     LabeledRow(
-        R.string.caller_id,
+        R.string.ui_overlay,
         helpTooltip = Str(R.string.help_caller_id),
         content = {
             val C = G.palette
@@ -418,19 +441,13 @@ fun CallerID() {
                 val trigger = remember { mutableStateOf(false) }
                 ConfigDialog(trigger)
 
-                if (isEnabled) {
-
-                    // Preview button
+                    // Configuration stays available even while the overlay is disabled.
                     StrokeButton(
-                        label = Str(R.string.preview),
+                        label = Str(R.string.cn_configure),
                         color = C.textGrey,
                     ) {
-                        spam.blocker.util.CallerIdentitySession.invalidate()
-                        showCallerIdWindow(ctx)
-
                         trigger.value = true
                     }
-                }
 
                 SwitchBox(isEnabled) { isTurningOn ->
                     if (isTurningOn) {

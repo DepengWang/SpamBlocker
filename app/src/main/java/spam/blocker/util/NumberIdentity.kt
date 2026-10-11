@@ -46,6 +46,8 @@ data class IdentitySource(
 /** Safe, user-visible API failure detail. Never includes request URLs or credentials. */
 class IdentityApiException(message: String) : Exception(message)
 
+internal class IdentityRequestException(val stage: String, cause: Throwable) : Exception(null, cause)
+
 /** Maps transport failures to actionable, credential-safe diagnostics. Never expose raw exception text. */
 internal object IdentityNetworkError {
     fun describe(error: Throwable): String {
@@ -88,6 +90,8 @@ data class IdentityEvidence(
     val queriedAt: Long = 0,
     val company: String? = null,
     val info: String? = null,
+    val failureStage: String? = null,
+    @kotlinx.serialization.Transient val fromCache: Boolean = false,
 ) {
     fun hasData() = listOf(name, province, city, carrier, category, company, info).any { !it.isNullOrBlank() } || risk != "unknown"
 }
@@ -275,24 +279,30 @@ class IdentityQueryEngine(private val cache: IdentityCache,
     private val fetch: suspend (IdentitySource, String) -> String) {
     companion object { private val permits = Semaphore(3) }
     suspend fun query(number: String, offline: IdentityEvidence, sources: List<IdentitySource>,
-        policy: IdentityCachePolicy = IdentityCachePolicy(), timeoutMs: Long = 3000): NumberIdentity = coroutineScope {
+        policy: IdentityCachePolicy = IdentityCachePolicy(), timeoutMs: Long = 3000,
+        retryFailures: Boolean = false): NumberIdentity = coroutineScope {
         val evidence = sources.filter { it.enabled }.take(6).map { source -> async {
             val key = source.fingerprint()
-            runCatching { cache.get(number, key, clock()) }.getOrNull() ?: run {
+            val cached = runCatching { cache.get(number, key, clock()) }.getOrNull()
+                ?.takeUnless { retryFailures && it.status in listOf("error", "timeout") }
+            cached?.copy(fromCache = true) ?: run {
                 val result = try {
-                    withTimeoutOrNull(timeoutMs.coerceIn(250, 5000)) {
+                    withTimeoutOrNull(timeoutMs.coerceIn(250, 30_000)) {
                         permits.withPermit { IdentityJson.parse(source, fetch(source, number), clock()) }
-                } ?: IdentityEvidence(source.id, source.name, "timeout", queriedAt = clock(), info = "请求超时")
+                } ?: IdentityEvidence(source.id, source.name, "timeout", queriedAt = clock(), info = "请求超时",
+                    failureStage = "deadline")
                 } catch (e: CancellationException) { throw e }
             catch (e: IdentityApiException) {
-                IdentityEvidence(source.id, source.name, "error", queriedAt = clock(), info = e.message?.take(160))
+                IdentityEvidence(source.id, source.name, "error", queriedAt = clock(), info = e.message?.take(160),
+                    failureStage = "response")
             }
             catch (_: SerializationException) {
-                IdentityEvidence(source.id, source.name, "error", queriedAt = clock(), info = "响应不是有效 JSON")
+                IdentityEvidence(source.id, source.name, "error", queriedAt = clock(), info = "响应不是有效 JSON",
+                    failureStage = "parse")
             }
             catch (e: Exception) {
                 IdentityEvidence(source.id, source.name, "error", queriedAt = clock(),
-                    info = IdentityNetworkError.describe(e))
+                    info = IdentityNetworkError.describe(e), failureStage = (e as? IdentityRequestException)?.stage)
             }
                 coroutineContext.ensureActive()
                 runCatching { cache.put(number, key, result, clock() + policy.ttlMillis(result)) }

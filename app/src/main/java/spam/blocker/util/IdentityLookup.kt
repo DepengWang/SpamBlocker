@@ -29,8 +29,11 @@ object IdentityLookup {
             company = cached?.company, info = cached?.info)
     }
 
-    suspend fun online(ctx: Context, number: String, offline: IdentityEvidence): NumberIdentity {
+    suspend fun online(ctx: Context, number: String, offline: IdentityEvidence,
+        timeoutMs: Int? = null, retryFailures: Boolean = false): NumberIdentity {
         val prefs = spf.ApiQueryOptions(ctx)
+        // Interactive diagnostics may wait longer without changing the automatic caller query budget.
+        val budget = timeoutMs?.coerceIn(250, 30_000) ?: prefs.identityTimeoutMs.coerceIn(250, 5000)
         val normalized = CnNumberLookup.normalizeNumber(number)
         val domestic = normalized?.nationalNumber ?: number
         val ignoredPrefixes = prefs.ignoredNumberPrefixes
@@ -53,8 +56,8 @@ object IdentityLookup {
                 parameters = source.parameters.mapValues { it.value.resolveSpfTag(ctx).resolveBase64Tag() },
                 url = source.url.resolveSpfTag(ctx).resolveBase64Tag(),
             )
-            request(resolved, normalized)
-        }.query(number, offline, sources, policy, prefs.identityTimeoutMs.toLong())
+            request(resolved, normalized, budget)
+        }.query(number, offline, sources, policy, budget.toLong(), retryFailures)
         identity.evidence.filter { it.sourceId == "tmini-checkmark" && it.status in listOf("ok", "empty") }
             .forEach { evidence ->
                 PhoneNumberMarkedDatabase.saveApiResult(ctx, number, domestic, evidence)
@@ -65,9 +68,10 @@ object IdentityLookup {
 
     // No logs, retries, redirects, raw response persistence, or credentials in cache keys.
     // Blocking network IO is detached from the screening response and cancelled via disconnect.
-    internal suspend fun request(source: IdentitySource, number: String): String = suspendCancellableCoroutine { continuation ->
+    internal suspend fun request(source: IdentitySource, number: String, timeoutMs: Int = 3000): String = suspendCancellableCoroutine { continuation ->
         val connection = AtomicReference<HttpURLConnection?>()
         val job = CoroutineScope(Dispatchers.IO).launch {
+            var stage = "prepare"
             try {
                 val encoded = URLEncoder.encode(number, "UTF-8")
                 val domestic = URLEncoder.encode(CnNumberLookup.normalizeNumber(number)?.nationalNumber ?: number, "UTF-8")
@@ -82,23 +86,29 @@ object IdentityLookup {
                 val conn = parsed.openConnection() as HttpURLConnection
                 connection.set(conn)
                 if (!continuation.isActive) { conn.disconnect(); return@launch }
-                conn.connectTimeout = 3000
-                conn.readTimeout = 3000
+                conn.connectTimeout = timeoutMs.coerceIn(250, 30_000)
+                conn.readTimeout = timeoutMs.coerceIn(250, 30_000)
                 conn.instanceFollowRedirects = false
                 conn.requestMethod = source.method
                 conn.setRequestProperty("User-Agent", "SpamBlocker/${spam.blocker.BuildConfig.VERSION_NAME}")
                 source.headers.forEach { (key, value) -> conn.setRequestProperty(key, value) }
+                if (source.method == "POST") conn.doOutput = true
+                stage = "connect"
+                conn.connect()
                 if (source.method == "POST") {
-                    conn.doOutput = true
+                    stage = "request"
                     conn.outputStream.use { it.write(source.body.replace("{number}", number)
                         .replace("{domestic}", CnNumberLookup.normalizeNumber(number)?.nationalNumber ?: number).toByteArray()) }
                 }
+                stage = "response"
                 val status = conn.responseCode
                 if (status !in 200..299) throw IdentityApiException("HTTP $status")
+                stage = "read"
                 val bytes = conn.inputStream.use { it.readNBytesCompat(256 * 1024) }
                 if (continuation.isActive) continuation.resume(bytes.toString(Charsets.UTF_8))
             } catch (e: Exception) {
-                if (continuation.isActive) continuation.resumeWithException(e)
+                if (continuation.isActive) continuation.resumeWithException(
+                    if (e is IdentityApiException) e else IdentityRequestException(stage, e))
             } finally { connection.getAndSet(null)?.disconnect() }
         }
         continuation.invokeOnCancellation { connection.getAndSet(null)?.disconnect(); job.cancel() }

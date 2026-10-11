@@ -261,6 +261,7 @@ class spf { // for namespace only
         var identitySources by str("cn_identity_sources", "[]")
         var identityCachePolicy by str("cn_identity_cache_policy", "{}")
         var identityTimeoutMs by int("cn_identity_timeout_ms", 3000)
+        var identityTestTimeoutMs by int("cn_identity_test_timeout_ms", 15000)
         // CallerInfo/PhoneNumber legacy-compatible controls and API credentials.
         var onlyOffline by bool("only_offline_key", false)
         var ignoredNumberPrefixes by str("cn_identity_ignored_prefixes", "")
@@ -388,6 +389,7 @@ class spf { // for namespace only
         var x by int("caller_id_window_x")
         var y by int("caller_id_window_y")
         var bgColor by int("caller_id_bg_color", DefaultCallerIdBgColor)
+        var transparentBackground by bool("caller_id_transparent_background", false)
         var template by str("caller_id_template", DefaultCallerIdTemplate)
         var showContact by bool("caller_id_show_contact", true)
         var durationSec by int("caller_id_duration_sec")

@@ -13,9 +13,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,6 +29,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import spam.blocker.G
@@ -57,6 +61,12 @@ import spam.blocker.util.TimeUtils.FreshnessColor
 import spam.blocker.util.TimeUtils.formatTime
 import spam.blocker.util.TimeUtils.timeColor
 import spam.blocker.util.Util
+import spam.blocker.util.IdentityLookup
+import spam.blocker.util.IdentityEvidence
+import spam.blocker.ui.setting.StatusPill
+import spam.blocker.ui.widgets.Str
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.foundation.Image as ComposeImage
 
 
@@ -77,6 +87,10 @@ fun HistoryCard(
 ) {
     val C = G.palette
     val ctx = LocalContext.current
+    // Reading the local databases must not stall list scrolling.
+    val identity by produceState<IdentityEvidence?>(null, record.peer) {
+        value = withContext(Dispatchers.IO) { IdentityLookup.offline(ctx, record.peer).second }
+    }
     OutlineCard(
         modifier = M.animateContentSize(),
         borderColor = if (record.isTest) C.teal200 else C.dialogBg.slightDiff()
@@ -164,8 +178,11 @@ fun HistoryCard(
                             }
                             Text(
                                 text = t,
-                                color = if (record.isBlocked()) C.error else C.success,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontSize = 18.sp,
+                                fontWeight = if (record.read) FontWeight.Normal else FontWeight.SemiBold,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
                                 modifier = M.weight(1f)
                             )
 
@@ -175,11 +192,18 @@ fun HistoryCard(
                         }
 
                         // Row 2: Geolocation | Carrier
-                        val label = remember(record.peer, showHistoryGeoLocation.value, showHistoryCarrier.value) {
+                        val label = remember(identity, showHistoryGeoLocation.value, showHistoryCarrier.value) {
                             listOfNotNull(
-                                if (showHistoryGeoLocation.value) Util.numberGeoLocation(ctx, record.peer) else null,
-                                if (showHistoryCarrier.value) Util.numberCarrier(ctx, record.peer) else null,
-                            ).joinToString(" | ")
+                                if (showHistoryGeoLocation.value) listOfNotNull(identity?.province, identity?.city)
+                                    .distinct().joinToString(" · ").ifBlank { null } else null,
+                                if (showHistoryCarrier.value) identity?.carrier else null,
+                            ).joinToString(" · ")
+                        }
+
+                        if (record.expanded) {
+                            identity?.category?.takeIf { it.isNotBlank() }?.let { StatusPill(it) }
+                            identity?.source?.let { Text(it, fontSize = 11.sp, color = C.textGrey,
+                                maxLines = 2, overflow = TextOverflow.Ellipsis) }
                         }
 
                         if (label.isNotEmpty()) {
@@ -249,7 +273,12 @@ fun HistoryCard(
                                     if (record.anythingWrongScreening) {
                                         ResIcon16(R.drawable.ic_exclamation, color = C.warning)
                                     }
-                                    r.ResultReason(false)
+                                    StatusPill(Str(if (record.isBlocked()) R.string.ui_blocked else R.string.ui_passed),
+                                        if (record.isBlocked()) C.error else C.success)
+                                    identity?.category?.takeIf { it.isNotBlank() }?.let {
+                                        Text(it, fontSize = 12.sp, color = C.infoBlue,
+                                            maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    }
                                 }
                             }
 

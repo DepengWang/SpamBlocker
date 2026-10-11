@@ -168,6 +168,33 @@ class NumberIdentityTest {
         val engine = IdentityQueryEngine(Cache()) { _, _ -> error("must not fetch") }
         assertEquals(1, engine.query("n", offline, listOf(source().copy(enabled = false))).evidence.size)
     }
+    @Test fun `manual retry skips failures but keeps successful results`() = runBlocking {
+        val count = AtomicInteger()
+        val engine = IdentityQueryEngine(Cache()) { _, _ ->
+            if (count.incrementAndGet() == 1) throw IdentityRequestException("connect", java.net.SocketException("Connection reset"))
+            """{"code":0,"data":{"category":"快递"}}"""
+        }
+        val first = engine.query("n", offline, listOf(source()))
+        assertEquals("connect", first.evidence.last().failureStage)
+        val cachedError = engine.query("n", offline, listOf(source()))
+        assertTrue(cachedError.evidence.last().fromCache)
+        assertEquals(1, count.get())
+        val retried = engine.query("n", offline, listOf(source()), retryFailures = true)
+        assertEquals(listOf("快递"), retried.categories)
+        assertFalse(retried.evidence.last().fromCache)
+        val cachedSuccess = engine.query("n", offline, listOf(source()), retryFailures = true)
+        assertTrue(cachedSuccess.evidence.last().fromCache)
+        assertEquals(2, count.get())
+    }
+    @Test fun `manual retry preserves cached unmarked results`() = runBlocking {
+        val count = AtomicInteger()
+        val engine = IdentityQueryEngine(Cache()) { _, _ -> count.incrementAndGet(); """{"code":0,"data":{}}""" }
+        engine.query("n", offline, listOf(source()))
+        val result = engine.query("n", offline, listOf(source()), retryFailures = true)
+        assertEquals("empty", result.evidence.last().status)
+        assertTrue(result.evidence.last().fromCache)
+        assertEquals(1, count.get())
+    }
     @Test fun `policy separates mark identity no result and error lifetimes`() {
         val p = IdentityCachePolicy()
         assertEquals(168 * 3_600_000L, p.ttlMillis(IdentityEvidence("a", "A", name = "企业")))

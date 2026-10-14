@@ -36,7 +36,7 @@ fun IdentityDiagnostics(onDismiss: () -> Unit) {
     var elapsed by remember { mutableLongStateOf(0) }
     var message by remember { mutableStateOf("") }
     fun query() {
-        val normalized = CnNumberLookup.normalizeNumber(number)?.e164
+        val normalized = CnNumberLookup.normalizeNumber(ctx, number)?.e164
         if (normalized == null) { message = resources.getString(R.string.cn_invalid_number); return }
         val budget = timeout
         val retry = retryFailures

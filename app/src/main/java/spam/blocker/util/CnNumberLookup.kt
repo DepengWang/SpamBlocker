@@ -66,10 +66,15 @@ object CnNumberLookup {
      * Normalizes +86 and 0086 without treating an unprefixed 86 as China.
      * Other international prefixes are passed to libphonenumber unchanged.
      */
-    fun normalizeNumber(rawNumber: String, defaultRegion: String = DEFAULT_REGION): NormalizedNumber? {
-        val parsed = parse(rawNumber, defaultRegion) ?: return null
+    fun normalizeNumber(rawNumber: String, defaultRegion: String = DEFAULT_REGION,
+        strip125833Prefix: Boolean = true): NormalizedNumber? {
+        val parsed = parse(rawNumber, defaultRegion, strip125833Prefix) ?: return null
         return parsed.normalized
     }
+
+    fun normalizeNumber(context: Context, rawNumber: String,
+        defaultRegion: String = DEFAULT_REGION): NormalizedNumber? =
+        normalizeNumber(rawNumber, defaultRegion, spf.ApiQueryOptions(context).strip125833Prefix)
 
     /**
      * Looks up a number using only libphonenumber's local geocoder and carrier metadata.
@@ -78,9 +83,10 @@ object CnNumberLookup {
         rawNumber: String,
         defaultRegion: String = DEFAULT_REGION,
         locale: Locale = Locale.getDefault(),
+        strip125833Prefix: Boolean = true,
     ): Result {
         val raw = rawNumber.trim()
-        val parsed = parse(raw, defaultRegion)
+        val parsed = parse(raw, defaultRegion, strip125833Prefix)
         if (parsed == null) {
             return Result(rawNumber = raw)
         }
@@ -135,7 +141,8 @@ object CnNumberLookup {
         defaultRegion: String = DEFAULT_REGION,
         locale: Locale = Locale.getDefault(),
     ): Result {
-        val base = lookupOffline(rawNumber, defaultRegion, locale)
+        val base = lookupOffline(rawNumber, defaultRegion, locale,
+            spf.ApiQueryOptions(context).strip125833Prefix)
         if (base.countryCode != 86 || base.nationalNumber == null) return base
 
         val record = ChinaPhoneDatabase.find(context, base.nationalNumber)
@@ -169,8 +176,8 @@ object CnNumberLookup {
             databaseVersion = listOfNotNull(base.databaseVersion, "Tmini-cache").distinct().joinToString("+"))
     }
 
-    private fun parse(rawNumber: String, defaultRegion: String): Parsed? {
-        val sanitized = sanitize(rawNumber) ?: return null
+    private fun parse(rawNumber: String, defaultRegion: String, strip125833Prefix: Boolean): Parsed? {
+        val sanitized = sanitize(rawNumber, strip125833Prefix) ?: return null
         return try {
             val phoneUtil = PhoneNumberUtil.getInstance()
             // Telecom often supplies a bare national number. Prefer the CN parser for
@@ -205,7 +212,7 @@ object CnNumberLookup {
             number.matches(Regex("9[56]\\d{3,6}"))
     }
 
-    private fun sanitize(rawNumber: String): String? {
+    private fun sanitize(rawNumber: String, strip125833Prefix: Boolean): String? {
         val compact = rawNumber.trim().replace(Regex("[^0-9+]"), "")
         if (compact.isEmpty() || compact.count { it == '+' } > 1 ||
             (compact.contains('+') && !compact.startsWith('+'))
@@ -213,8 +220,14 @@ object CnNumberLookup {
             return null
         }
 
+        // Some caller ID sources prepend China Mobile's 125833 service prefix to
+        // the actual mobile number. Remove it only when a complete CN mobile
+        // number follows, so unrelated numbers beginning with these digits stay intact.
+        val number = if (strip125833Prefix && compact.startsWith("125833")) compact.drop(6) else compact
+        val normalizedInput = number.takeIf { it.matches(Regex("1[3-9]\\d{9}")) } ?: compact
+
         // ITU international dialing prefix. This also handles 0086 explicitly.
-        return if (compact.startsWith("00")) "+${compact.drop(2)}" else compact
+        return if (normalizedInput.startsWith("00")) "+${normalizedInput.drop(2)}" else normalizedInput
     }
 
     private fun categoryOf(

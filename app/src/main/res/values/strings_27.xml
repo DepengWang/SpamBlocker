@@ -197,6 +197,8 @@
     <string name="cn_identity_short">Location, carrier, and online lookup</string>
     <string name="cn_history_location">Show location in call history</string>
     <string name="cn_history_carrier">Show carrier in call history</string>
+    <string name="cn_strip_125833_prefix">Strip 125833 prefix</string>
+    <string name="cn_strip_125833_prefix_help">Removes the prefix only when it is followed by a complete 11-digit mobile number. When off, lookup uses the original number.</string>
     <string name="cn_preset_400">Block 400/800 service numbers</string>
     <string name="cn_preset_400_help">Only applies after you add it. It may block legitimate company support or callback numbers; enable only if this suits your needs.</string>
     <string name="cn_preset_95">Block 95/96 short codes</string>

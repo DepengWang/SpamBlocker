@@ -34,7 +34,7 @@ object IdentityLookup {
         val prefs = spf.ApiQueryOptions(ctx)
         // Interactive diagnostics may wait longer without changing the automatic caller query budget.
         val budget = timeoutMs?.coerceIn(250, 30_000) ?: prefs.identityTimeoutMs.coerceIn(250, 5000)
-        val normalized = CnNumberLookup.normalizeNumber(number)
+        val normalized = CnNumberLookup.normalizeNumber(ctx, number)
         val domestic = normalized?.nationalNumber ?: number
         val ignoredPrefixes = prefs.ignoredNumberPrefixes
             .split(',', ';', '\n', '\r', ' ', '\t').map(String::trim).filter(String::isNotEmpty)

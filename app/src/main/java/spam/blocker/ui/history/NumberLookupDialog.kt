@@ -55,7 +55,7 @@ fun NumberLookupDialog(trigger: MutableState<Boolean>) {
         savedMarks.clear(); savedMarks.putAll(marks)
     }
     fun addExactRule(identity: NumberIdentity, blacklist: Boolean) {
-        val national = CnNumberLookup.normalizeNumber(identity.number)?.nationalNumber
+        val national = CnNumberLookup.normalizeNumber(ctx, identity.number)?.nationalNumber
         if (national.isNullOrBlank()) { note = resources.getString(R.string.cn_invalid_number); return }
         scope.launch {
             val added = withContext(Dispatchers.IO) {
@@ -76,7 +76,7 @@ fun NumberLookupDialog(trigger: MutableState<Boolean>) {
         }
     }
     fun doQuery() {
-        val parsed = CnNumberLookup.normalizeNumber(number)
+        val parsed = CnNumberLookup.normalizeNumber(ctx, number)
         if (parsed == null) { inputError = resources.getString(R.string.cn_invalid_number); return }
         inputError = ""; note = ""; current = null; busy = true; queryJob?.cancel()
         queryJob = scope.launch {

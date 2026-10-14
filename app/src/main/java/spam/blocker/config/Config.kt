@@ -820,6 +820,8 @@ class ApiQuery : IConfig {
     var identityTestTimeoutMs = 15000
     var onlyOffline = false
     var ignoredNumberPrefixes = ""
+    @SerialName("strip12583Prefix")
+    var strip125833Prefix = true
     var apiType = -1
     val apis = mutableListOf<QueryApi>()
     var listCollapsed = false
@@ -835,6 +837,7 @@ class ApiQuery : IConfig {
         identityTestTimeoutMs = spf.identityTestTimeoutMs
         onlyOffline = spf.onlyOffline
         ignoredNumberPrefixes = spf.ignoredNumberPrefixes
+        strip125833Prefix = spf.strip125833Prefix
         apiType = spf.apiType
         listCollapsed = spf.isListCollapsed
         priority = spf.priority
@@ -855,6 +858,7 @@ class ApiQuery : IConfig {
         spf.identityTestTimeoutMs = identityTestTimeoutMs.coerceIn(1000, 30_000)
         spf.onlyOffline = onlyOffline
         spf.ignoredNumberPrefixes = ignoredNumberPrefixes
+        spf.strip125833Prefix = strip125833Prefix
         spf.apiType = apiType
     }
 }

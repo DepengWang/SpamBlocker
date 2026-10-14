@@ -38,6 +38,10 @@ fun IdentitySettings() {
     val count = remember(revision) { runCatching {
         IdentityJson.sources(prefs.identitySources).count { it.enabled }
     }.getOrDefault(0) }
+    LabeledRow(R.string.cn_strip_125833_prefix,
+        helpTooltip = Str(R.string.cn_strip_125833_prefix_help)) {
+        SwitchBox(prefs.strip125833Prefix) { prefs.strip125833Prefix = it }
+    }
     SettingsNavigationRow(Str(R.string.ui_identity_sources),
         if (prefs.onlyOffline || count == 0) Str(R.string.ui_local_only_status)
         else resources.getString(R.string.ui_sources_enabled, count), R.drawable.ic_settings) { page = "sources" }

@@ -196,6 +196,8 @@
     <string name="cn_identity_short">归属地、运营商和在线查询</string>
     <string name="cn_history_location">在通话记录显示归属地</string>
     <string name="cn_history_carrier">在通话记录显示运营商</string>
+    <string name="cn_strip_125833_prefix">移除 125833 前缀</string>
+    <string name="cn_strip_125833_prefix_help">仅当 125833 后面是完整的 11 位手机号时移除前缀；关闭后按原号码查询。</string>
     <string name="cn_preset_400">拦截 400/800 业务号码</string>
     <string name="cn_preset_400_help">仅对主动添加的新来电生效；可能拦截正常企业客服或售后回拨，请确认适合自己的场景。</string>
     <string name="cn_preset_95">拦截 95/96 短号</string>

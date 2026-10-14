@@ -265,6 +265,8 @@ class spf { // for namespace only
         // CallerInfo/PhoneNumber legacy-compatible controls and API credentials.
         var onlyOffline by bool("only_offline_key", false)
         var ignoredNumberPrefixes by str("cn_identity_ignored_prefixes", "")
+        // Keep the existing key so installations that already saved the toggle retain its value.
+        var strip125833Prefix by bool("cn_identity_strip_12583_prefix", true)
         var apiType by int("api_type", -1)
         var baiduApiKey by str("baidu_api_key")
         var juheApiKey by str("juhe_api_key")
